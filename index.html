@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="Valet"/>
+<meta name="theme-color" content="#1c1812"/>
+
+<!-- PWA Manifest inline -->
+<script>
+(function(){
+  // Generate icon as canvas → data URL → inject manifest
+  const c=document.createElement('canvas');c.width=512;c.height=512;
+  const ctx=c.getContext('2d');
+  // Background — deep ink
+  ctx.fillStyle='#1c1812';
+  ctx.beginPath();ctx.roundRect(0,0,512,512,90);ctx.fill();
+  // Gold border ring
+  ctx.strokeStyle='#9a7c4a';ctx.lineWidth=14;
+  ctx.beginPath();ctx.roundRect(18,18,476,476,76);ctx.stroke();
+  // "V" monogram
+  ctx.font='bold 320px Palatino, Georgia, serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  // Gold gradient
+  const g=ctx.createLinearGradient(256,100,256,400);
+  g.addColorStop(0,'#c4a96e');g.addColorStop(0.5,'#9a7c4a');g.addColorStop(1,'#7a5c2a');
+  ctx.fillStyle=g;
+  ctx.fillText('V',256,280);
+  const icon=c.toDataURL('image/png');
+  const manifest={name:'Valet — Personal Stylist',short_name:'Valet',start_url:'.',display:'standalone',background_color:'#1c1812',theme_color:'#1c1812',orientation:'portrait',icons:[{src:icon,sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
+  const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('link');link.rel='manifest';link.href=url;
+  document.head.appendChild(link);
+  // Apple touch icon
+  const al=document.createElement('link');al.rel='apple-touch-icon';al.href=icon;
+  document.head.appendChild(al);
+})();
+</script>
+
+<title>Valet — Personal Stylist</title>
+<style>
+:root{
+  --cream:#faf7f2;--linen:#ede8de;--gold:#9a7c4a;--gold-l:#c4a96e;--gold-f:#f5ead8;
+  --ink:#1c1812;--ink-l:#3a3228;--muted:#7a6e60;--faint:#b8b0a0;--faintest:#ddd8ce;
+  --border:#d8d0c0;--border-l:#ece6da;--red:#8a3a2a;--green:#2a5a3a;--white:#fefcf8;
+  --safe-bottom:env(safe-area-inset-bottom,12px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;background:var(--cream);}
+body{font-family:'Palatino Linotype','Book Antiqua',Palatino,Georgia,serif;color:var(--ink);}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;background:var(--cream);position:relative;overflow:hidden;}
+::-webkit-scrollbar{display:none;}
+input,select,textarea,button{font-family:inherit;}
+input:focus,select:focus{outline:none;}
+
+#offline-banner{display:none;background:#f5e8c8;border-bottom:1px solid #e0c878;padding:7px 18px;font-size:11px;color:#6a5a20;text-align:center;flex-shrink:0;}
+#header{flex-shrink:0;background:var(--white);border-bottom:1px solid var(--border);padding:10px 18px;padding-top:max(10px,env(safe-area-inset-top,10px));display:flex;justify-content:space-between;align-items:center;}
+.logo{font-size:19px;letter-spacing:0.24em;color:var(--gold);font-weight:400;}
+.logo-sub{font-size:8px;color:var(--faint);letter-spacing:0.32em;text-transform:uppercase;margin-top:1px;}
+.header-right{display:flex;align-items:center;gap:8px;}
+.online-dot{width:7px;height:7px;border-radius:50%;background:var(--faintest);transition:background 0.4s;flex-shrink:0;}
+.online-dot.on{background:#4a8a5a;}.online-dot.off{background:#c4a030;}
+.city-pill{display:flex;align-items:center;gap:5px;background:var(--gold-f);border:1px solid var(--border);border-radius:20px;padding:5px 10px;cursor:pointer;}
+.city-pill span{font-size:11px;color:var(--ink-l);}
+#queue-btn{display:none;background:var(--gold-f);color:var(--gold);border:1px solid var(--border);border-radius:20px;padding:5px 10px;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:0.05em;}
+
+#content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+.screen{padding:18px 18px 32px;display:none;animation:fu 0.3s ease;}
+.screen.active{display:block;}
+@keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+#nav{flex-shrink:0;background:var(--white);border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe-bottom);}
+.nb{flex:1;border:none;background:none;cursor:pointer;padding:9px 0 5px;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.ni{font-size:18px;opacity:0.28;transition:opacity 0.2s;}
+.nl{font-size:9px;color:var(--faint);letter-spacing:0.08em;text-transform:uppercase;}
+.nb.active .ni{opacity:1;}.nb.active .nl{color:var(--gold);font-weight:600;}
+
+.mo{position:absolute;inset:0;background:rgba(28,24,18,0.52);z-index:200;display:none;align-items:flex-end;}
+.mo.open{display:flex;}
+.ms{width:100%;background:var(--white);border-radius:18px 18px 0 0;padding:20px 18px;padding-bottom:max(32px,var(--safe-bottom));max-height:92dvh;overflow-y:auto;}
+.mh{width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 18px;}
+
+.sl{font-size:9px;color:var(--faint);letter-spacing:0.28em;text-transform:uppercase;margin-bottom:10px;}
+.dv{height:1px;background:var(--border);margin:14px 0;}
+.gbtn{width:100%;padding:13px;background:var(--ink);color:var(--cream);border:none;border-radius:10px;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:600;cursor:pointer;margin-bottom:14px;}
+.gbtn:disabled{background:var(--linen);color:var(--faint);cursor:not-allowed;}
+.pill{display:inline-block;padding:5px 12px;border-radius:20px;border:1px solid var(--border);font-size:10px;cursor:pointer;white-space:nowrap;color:var(--muted);background:transparent;transition:all 0.15s;}
+.pill.active{background:var(--gold);border-color:var(--gold);color:white;font-weight:600;}
+.sr{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;}
+.fl{font-size:9px;color:var(--faint);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:5px;}
+.fi{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--ink);background:var(--cream);}
+.fs{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;color:var(--ink);background:var(--cream);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.sp{display:flex;gap:6px;justify-content:center;padding:28px 0;}
+.sp span{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:bl 1.2s ease-in-out infinite;}
+.sp span:nth-child(2){animation-delay:.2s;}.sp span:nth-child(3){animation-delay:.4s;}
+@keyframes bl{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1)}}
+
+.ao .ah{font-size:14px;font-weight:600;color:var(--ink);margin:16px 0 5px;}
+.ao .ap{font-size:12px;color:var(--muted);margin-bottom:5px;line-height:1.7;}
+.ao .ali{display:flex;gap:8px;margin-bottom:5px;}
+.ao .ali .dot{color:var(--gold);font-size:10px;flex-shrink:0;margin-top:3px;}
+.ao .ali span{font-size:12px;color:var(--muted);line-height:1.65;}
+.ao .anu{display:flex;gap:8px;margin-bottom:6px;}
+.ao .anu .num{color:var(--gold);font-size:12px;min-width:16px;font-weight:600;}
+.ao .anu span{font-size:12px;color:var(--muted);line-height:1.65;}
+
+.wg{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.wc{background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;}
+.wi{height:110px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+.wi img{width:100%;height:100%;object-fit:cover;}
+.fd{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;}
+.tg{font-size:9px;padding:2px 7px;border-radius:10px;letter-spacing:0.05em;text-transform:uppercase;display:inline-block;}
+.uz{border:1.5px dashed var(--border);border-radius:12px;height:140px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:14px;overflow:hidden;background:var(--cream);position:relative;}
+.mt{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px;}
+.mb{flex:1;padding:9px;border:none;background:transparent;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all 0.18s;}
+.mb.active{background:var(--gold);color:white;font-weight:600;}
+.wth{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;min-height:72px;}
+.dc{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:7px;cursor:pointer;}
+.dc.today{border-color:var(--gold);}
+.ib{background:var(--gold-f);border:1px solid var(--border-l);border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:11px;color:var(--ink-l);line-height:1.55;}
+
+/* Smart form */
+.oc{padding:7px 13px;border-radius:8px;border:1px solid var(--border);font-size:11px;color:var(--muted);background:var(--cream);cursor:pointer;transition:all 0.15s;}
+.oc.sel{background:var(--gold);border-color:var(--gold);color:white;font-weight:600;}
+.og{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
+.sb{display:flex;gap:4px;margin-bottom:18px;}
+.sd{flex:1;height:3px;border-radius:2px;background:var(--linen);transition:background 0.3s;}
+.sd.done{background:var(--gold);}
+.qi{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--white);border:1px solid var(--border);border-radius:10px;margin-bottom:7px;}
+
+/* City autocomplete */
+#city-suggestions{position:absolute;left:0;right:0;background:var(--white);border:1px solid var(--border);border-radius:0 0 10px 10px;box-shadow:0 8px 24px rgba(28,24,18,0.12);z-index:10;max-height:200px;overflow-y:auto;display:none;}
+.city-sug-item{padding:12px 14px;font-size:13px;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--border-l);}
+.city-sug-item:last-child{border-bottom:none;}
+.city-sug-item:active{background:var(--gold-f);}
+.city-input-wrap{position:relative;}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="offline-banner">✦ Offline — cached plan &amp; wardrobe available</div>
+
+<div id="header">
+  <div><div class="logo">VALET</div><div class="logo-sub">personal stylist</div></div>
+  <div class="header-right">
+    <div class="online-dot" id="odot"></div>
+    <button id="queue-btn" onclick="openModal('queue')">📷 <span id="qcount">0</span> queued</button>
+    <div class="city-pill" onclick="openCityModal()"><span>📍</span><span id="city-label">Locating…</span></div>
+  </div>
+</div>
+
+<div id="content">
+
+<!-- MORNING -->
+<div id="screen-morning" class="screen active">
+  <div id="date-label" style="font-size:18px;color:var(--ink);margin-bottom:14px;font-weight:400;"></div>
+  <div class="wth">
+    <div id="wc" style="flex:1;"><div style="font-size:11px;color:var(--faint);">Fetching weather…</div></div>
+    <button onclick="loadWeather()" style="font-size:18px;color:var(--faint);background:none;border:none;cursor:pointer;padding:6px;">↻</button>
+  </div>
+  <div class="mt"><button class="mb active" id="mw" onclick="setMode('work')">Work</button><button class="mb" id="mc" onclick="setMode('casual')">Casual</button></div>
+  <div class="sr" id="occ-row" style="margin-bottom:14px;"></div>
+  <button class="gbtn" id="gen-btn" onclick="generateMorning()">✦  Generate Today's Outfits</button>
+  <div id="mspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div><div style="text-align:center;font-size:11px;color:var(--faint);margin-top:2px;">Curating your looks</div></div>
+  <div id="mout" class="ao" style="display:none;"></div>
+  <div id="mact" style="display:none;margin-top:16px;">
+    <div style="display:flex;gap:8px;">
+      <button onclick="logOutfit(this)" style="flex:1;padding:10px;background:var(--gold);color:white;border:none;border-radius:8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;cursor:pointer;">Log Worn</button>
+      <button onclick="generateMorning()" style="flex:1;padding:10px;background:var(--white);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;">Regenerate</button>
+    </div>
+  </div>
+</div>
+
+<!-- WARDROBE -->
+<div id="screen-wardrobe" class="screen">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div><div style="font-size:16px;color:var(--ink);font-weight:400;letter-spacing:0.04em;">Wardrobe</div><div id="wcount" style="font-size:10px;color:var(--faint);margin-top:2px;">0 items</div></div>
+    <div style="display:flex;gap:7px;">
+      <button onclick="openSmartForm()" style="padding:8px 12px;background:var(--gold-f);color:var(--gold);border:1px solid var(--border);border-radius:8px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;cursor:pointer;">+ Manual</button>
+      <button onclick="openUploadModal()" style="padding:8px 13px;background:var(--ink);color:var(--cream);border:none;border-radius:8px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;cursor:pointer;">📷 Photo</button>
+    </div>
+  </div>
+  <div class="sr" id="wtabs" style="margin-bottom:12px;"></div>
+  <div id="wgrid" class="wg"></div>
+  <div id="wempty" style="text-align:center;padding:50px 20px;display:none;">
+    <div style="font-size:36px;margin-bottom:12px;opacity:0.2;">🧥</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">Your wardrobe is empty</div>
+    <div style="font-size:11px;color:var(--faint);margin-bottom:20px;">Tap Manual (works offline) or Photo (AI analyses when online)</div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <button onclick="openSmartForm()" style="padding:9px 16px;background:var(--gold-f);color:var(--gold);border:1px solid var(--border);border-radius:8px;font-size:10px;text-transform:uppercase;font-weight:600;cursor:pointer;">Manual</button>
+      <button onclick="openUploadModal()" style="padding:9px 16px;background:var(--ink);color:var(--cream);border:none;border-radius:8px;font-size:10px;text-transform:uppercase;font-weight:600;cursor:pointer;">📷 Photo</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLANNER -->
+<div id="screen-planner" class="screen">
+  <div style="font-size:16px;color:var(--ink);font-weight:400;letter-spacing:0.04em;margin-bottom:3px;">Weekly Planner</div>
+  <div style="font-size:10px;color:var(--faint);margin-bottom:6px;">Auto-refreshes weekly · cached for offline</div>
+  <div id="plan-note" style="display:none;font-size:10px;color:var(--faint);text-align:center;margin-bottom:8px;">Cached plan from <span id="plan-date"></span></div>
+  <div id="pspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div></div>
+  <div id="pdays"></div>
+  <button onclick="generatePlan(true)" id="pregen-btn" style="width:100%;padding:11px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;margin-top:4px;margin-bottom:14px;">↻  Regenerate Plan</button>
+  <div id="plog-sec" style="display:none;"><div class="dv"></div><div class="sl">Outfit History</div><div id="plog"></div></div>
+</div>
+
+<!-- GAPS -->
+<div id="screen-gaps" class="screen">
+  <div style="font-size:16px;color:var(--ink);font-weight:400;letter-spacing:0.04em;margin-bottom:3px;">Wardrobe Gaps</div>
+  <div style="font-size:10px;color:var(--faint);margin-bottom:14px;">What's missing to complete your wardrobe</div>
+  <div class="ib">AI cross-references your wardrobe against your occasions and 2026 trends to identify pieces that unlock the most new combinations.</div>
+  <button class="gbtn" id="gap-btn" onclick="findGaps()">◇  Analyse My Gaps</button>
+  <div id="gspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div></div>
+  <div id="gout" class="ao" style="display:none;"></div>
+</div>
+
+<!-- TRENDS -->
+<div id="screen-trends" class="screen">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+    <div style="font-size:16px;color:var(--ink);font-weight:400;letter-spacing:0.04em;">Trends</div>
+    <button onclick="fetchTrends()" style="font-size:11px;color:var(--gold);background:none;border:none;cursor:pointer;">↻ Refresh</button>
+  </div>
+  <div style="font-size:10px;color:var(--faint);margin-bottom:14px;">Menswear intelligence · SS 2026</div>
+  <button class="gbtn" id="trend-btn" onclick="fetchTrends()">◈  Search Latest Trends</button>
+  <div id="tspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div></div>
+  <div id="tout" class="ao" style="display:none;"></div>
+</div>
+
+</div><!-- content -->
+
+<div id="nav">
+  <button class="nb active" onclick="showScreen('morning',this)"><span class="ni">☀</span><span class="nl">Morning</span></button>
+  <button class="nb" onclick="showScreen('wardrobe',this)"><span class="ni">👔</span><span class="nl">Wardrobe</span></button>
+  <button class="nb" onclick="showScreen('planner',this)"><span class="ni">📅</span><span class="nl">Planner</span></button>
+  <button class="nb" onclick="showScreen('gaps',this)"><span class="ni">◇</span><span class="nl">Gaps</span></button>
+  <button class="nb" onclick="showScreen('trends',this)"><span class="ni">◈</span><span class="nl">Trends</span></button>
+</div>
+
+<!-- MODAL: City — with autocomplete -->
+<div class="mo" id="modal-city" onclick="if(event.target===this)closeModal('city')">
+  <div class="ms">
+    <div class="mh"></div>
+    <div style="font-size:15px;color:var(--ink);font-weight:500;margin-bottom:3px;">Your Location</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px;">Used for live weather every morning</div>
+
+    <!-- GPS detect button -->
+    <button id="loc-btn" onclick="detectLocation()" style="width:100%;padding:11px;background:var(--gold-f);color:var(--gold);border:1px solid var(--border);border-radius:8px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;cursor:pointer;margin-bottom:16px;">📍  Detect My Location</button>
+
+    <div style="text-align:center;font-size:10px;color:var(--faint);margin-bottom:12px;letter-spacing:0.05em;">— or type your city —</div>
+
+    <!-- City input with autocomplete dropdown -->
+    <div class="city-input-wrap">
+      <input id="city-input" class="fi" placeholder="Start typing a city…" autocomplete="off"
+        oninput="onCityInput(this.value)"
+        onkeydown="onCityKey(event)"/>
+      <div id="city-suggestions"></div>
+    </div>
+
+    <button onclick="saveCity()" style="width:100%;padding:12px;background:var(--ink);color:var(--cream);border:none;border-radius:8px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600;cursor:pointer;margin-top:12px;">Save &amp; Refresh Weather</button>
+  </div>
+</div>
+
+<!-- MODAL: Photo Upload -->
+<div class="mo" id="modal-upload" onclick="if(event.target===this)closeModal('upload')">
+  <div class="ms">
+    <div class="mh"></div>
+    <div style="font-size:15px;color:var(--ink);font-weight:400;margin-bottom:2px;">Add via Photo</div>
+    <div style="font-size:10px;color:var(--faint);margin-bottom:14px;">AI analyses online · queued automatically if offline</div>
+    <div class="uz" id="uz" onclick="document.getElementById('finput').click()">
+      <div id="uph" style="text-align:center;color:var(--faint);">
+        <div style="font-size:28px;margin-bottom:8px;">↑</div>
+        <div style="font-size:12px;">Tap to choose photo</div>
+        <div style="font-size:10px;margin-top:3px;color:var(--faintest);">Queued if offline · analysed when back online</div>
+      </div>
+      <div id="uao" style="display:none;position:absolute;inset:0;background:rgba(250,247,242,0.92);align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+        <div class="sp" style="padding:0;"><span></span><span></span><span></span></div>
+        <div style="font-size:11px;color:var(--gold);">Analysing photo…</div>
+      </div>
+    </div>
+    <input type="file" id="finput" accept="image/*" capture="environment" style="display:none;" onchange="handleImg(this)"/>
+    <div style="margin-bottom:12px;"><div class="fl">Name <span style="color:var(--faintest);font-size:9px;">(auto-filled by AI)</span></div><input id="iname" class="fi" placeholder="e.g. Navy Suit Coat"/></div>
+    <div class="g2" style="margin-bottom:12px;">
+      <div><div class="fl">Group</div><select id="igroup" class="fs" onchange="updTypes()"><option>Tops</option><option>Bottoms</option><option>Outerwear</option><option>Shoes</option><option>Accessories</option><option>Watches &amp; Jewellery</option></select></div>
+      <div><div class="fl">Type</div><select id="itype" class="fs"></select></div>
+      <div><div class="fl">Context</div><select id="icat" class="fs"><option value="work">Work</option><option value="casual">Casual</option><option value="both">Both</option></select></div>
+      <div><div class="fl">Fit</div><select id="ifit" class="fs"><option>slim</option><option>classic</option><option selected>regular</option><option>wide</option><option>relaxed</option><option>n/a</option></select></div>
+      <div><div class="fl">Pattern</div><select id="ipat" class="fs"><option>solid</option><option>stripe</option><option>pinstripe</option><option>check</option><option>plaid</option><option>houndstooth</option><option>tweed</option><option>other</option></select></div>
+      <div><div class="fl">Colour</div>
+        <div style="display:flex;gap:7px;align-items:center;margin-top:1px;">
+          <input type="color" id="icol" value="#1c1812" style="width:37px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;" oninput="document.getElementById('chex').textContent=this.value"/>
+          <span id="chex" style="font-size:10px;color:var(--faint);">#1c1812</span>
+        </div>
+      </div>
+    </div>
+    <button onclick="addFromUpload()" style="width:100%;padding:13px;background:var(--ink);color:var(--cream);border:none;border-radius:10px;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;cursor:pointer;">Add to Wardrobe</button>
+  </div>
+</div>
+
+<!-- MODAL: Smart Form -->
+<div class="mo" id="modal-smart" onclick="if(event.target===this)closeModal('smart')">
+  <div class="ms">
+    <div class="mh"></div>
+    <div style="font-size:15px;color:var(--ink);font-weight:400;margin-bottom:2px;" id="st-title">Add Item</div>
+    <div style="font-size:10px;color:var(--faint);margin-bottom:14px;">Works fully offline · tap your answers</div>
+    <div class="sb" id="st-bar"></div>
+    <div id="st-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: Photo Queue -->
+<div class="mo" id="modal-queue" onclick="if(event.target===this)closeModal('queue')">
+  <div class="ms">
+    <div class="mh"></div>
+    <div style="font-size:15px;color:var(--ink);font-weight:400;margin-bottom:3px;">Photo Queue</div>
+    <div style="font-size:10px;color:var(--faint);margin-bottom:16px;">Waiting to be AI-analysed when online</div>
+    <div id="qlist"></div>
+    <div id="qempty" style="text-align:center;padding:28px;color:var(--faint);font-size:12px;display:none;">Queue is empty</div>
+    <button id="qproc" onclick="processQueue()" style="display:none;width:100%;padding:12px;background:var(--ink);color:var(--cream);border:none;border-radius:10px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600;cursor:pointer;margin-top:8px;">✦  Analyse All Now</button>
+  </div>
+</div>
+
+<!-- MODAL: Item Detail -->
+<div class="mo" id="modal-item" onclick="if(event.target===this)closeModal('item')">
+  <div class="ms"><div class="mh"></div><div id="idet"></div></div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// DATA CONSTANTS
+// ════════════════════════════════════════════════════════════
+const WC=['Daily Office','Board Meeting','Client Presentation','Business Casual','Conference','Formal Event'];
+const CC=['Weekend','Date Night','Brunch','Travel','Evening Out','Smart Casual'];
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const WI={sunny:'☀️',cloudy:'⛅',rainy:'🌧️',cold:'❄️',warm:'🌤️',windy:'🌬️'};
+const IG={
+  'Tops':['Suit Coat','Blazer','Shirt','Polo','T-Shirt','Sweater','Turtleneck','Waistcoat'],
+  'Bottoms':['Suit Trousers','Chinos','Jeans','Shorts'],
+  'Outerwear':['Overcoat','Trench Coat','Puffer','Jacket'],
+  'Shoes':['Oxford','Derby','Loafer','Chelsea Boot','Sneaker','Boot'],
+  'Accessories':['Belt','Tie','Pocket Square','Scarf','Bag'],
+  'Watches & Jewellery':['Watch','Ring','Bracelet','Necklace','Cufflinks','Lapel Pin']
+};
+
+const STEPS=[
+  {id:'typeGroup',label:'What type of item?',opts:Object.keys(IG)},
+  {id:'type',label:'More specifically?',optsFn:a=>IG[a.typeGroup]||[]},
+  {id:'category',label:'When do you wear it?',opts:['Work','Casual','Both'],map:{Work:'work',Casual:'casual',Both:'both'}},
+  {id:'fit',label:'How does it fit?',opts:['Slim','Classic','Regular','Wide','Relaxed','N/A'],map:{Slim:'slim',Classic:'classic',Regular:'regular',Wide:'wide',Relaxed:'relaxed','N/A':'n/a'}},
+  {id:'pattern',label:'Pattern?',opts:['Solid','Stripe','Pinstripe','Check','Plaid','Houndstooth','Tweed','Other'],map:{Solid:'solid',Stripe:'stripe',Pinstripe:'pinstripe',Check:'check',Plaid:'plaid',Houndstooth:'houndstooth',Tweed:'tweed',Other:'other'}},
+  {id:'color',label:'Primary colour?',type:'color'},
+  {id:'name',label:'Give it a name',type:'text',ph:'e.g. Navy Pinstripe Suit Coat'},
+];
+
+// ════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════
+let S={
+  wardrobe:[],outfitLog:[],photoQueue:[],
+  city:'',lat:null,lon:null,weather:null,
+  mode:'work',workCtx:'Daily Office',casualCtx:'Weekend',
+  weekPlan:{},weekPlanDate:'',weekPlanText:'',
+  uploadPreview:null,activeWTab:'All',
+  smartStep:0,smartAns:{}
+};
+let online=navigator.onLine;
+let cityAcTimer=null; // debounce timer for autocomplete
+
+// ════════════════════════════════════════════════════════════
+// PERSISTENCE — history always saved locally, 100% offline
+// ════════════════════════════════════════════════════════════
+function save(){
+  try{
+    localStorage.setItem('vw',JSON.stringify(S.wardrobe));
+    localStorage.setItem('vl',JSON.stringify(S.outfitLog));
+    localStorage.setItem('vc',S.city);
+    localStorage.setItem('vlat',S.lat||'');
+    localStorage.setItem('vlon',S.lon||'');
+    localStorage.setItem('vp',JSON.stringify(S.weekPlan));
+    localStorage.setItem('vpd',S.weekPlanDate||'');
+    localStorage.setItem('vpt',S.weekPlanText||'');
+    localStorage.setItem('vq',JSON.stringify(S.photoQueue.map(q=>({id:q.id,name:q.name}))));
+    S.photoQueue.forEach(q=>{if(q.image)try{localStorage.setItem('vqi'+q.id,q.image);}catch(e){}});
+  }catch(e){console.warn('Storage full',e);}
+}
+function load(){
+  try{
+    S.wardrobe=JSON.parse(localStorage.getItem('vw')||'[]');
+    S.outfitLog=JSON.parse(localStorage.getItem('vl')||'[]');
+    S.city=localStorage.getItem('vc')||'';
+    S.lat=parseFloat(localStorage.getItem('vlat'))||null;
+    S.lon=parseFloat(localStorage.getItem('vlon'))||null;
+    S.weekPlan=JSON.parse(localStorage.getItem('vp')||'{}');
+    S.weekPlanDate=localStorage.getItem('vpd')||'';
+    S.weekPlanText=localStorage.getItem('vpt')||'';
+    const qm=JSON.parse(localStorage.getItem('vq')||'[]');
+    S.photoQueue=qm.map(q=>({...q,image:localStorage.getItem('vqi'+q.id)||''}));
+  }catch(e){}
+}
+
+// ════════════════════════════════════════════════════════════
+// CONNECTIVITY
+// ════════════════════════════════════════════════════════════
+function updOnline(){
+  online=navigator.onLine;
+  document.getElementById('odot').className='online-dot '+(online?'on':'off');
+  document.getElementById('offline-banner').style.display=online?'none':'block';
+}
+window.addEventListener('online',()=>{updOnline();loadWeather();processQueue();maybeAutoPlan();});
+window.addEventListener('offline',updOnline);
+
+// ════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════
+const todayStr=()=>new Date().toISOString().split('T')[0];
+const todayFull=()=>new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+const dayShort=()=>new Date().toLocaleDateString('en-GB',{weekday:'short'});
+const daysSince=d=>{if(!d?.length)return null;const l=new Date(Math.max(...d.map(x=>new Date(x))));return Math.floor((Date.now()-l)/86400000);};
+const fc=d=>d===null?'#9a7c4a':d>14?'#2a5a3a':d>7?'#c4a96e':'#8a3a2a';
+
+async function claude(msgs,sys='',search=false){
+  const b={model:'claude-sonnet-4-20250514',max_tokens:1500,messages:msgs};
+  if(sys)b.system=sys;
+  if(search)b.tools=[{type:'web_search_20250305',name:'web_search'}];
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+  const d=await r.json();
+  return d.content?.map(x=>x.text||'').filter(Boolean).join('')||'';
+}
+
+function rAI(t){
+  let h='';
+  t.split('\n').forEach(l=>{
+    const s=l.trim();
+    if(!s){h+='<div style="height:6px"></div>';return;}
+    if(s.match(/^#{1,3}\s/)){h+=`<div class="ah">${s.replace(/^#+\s/,'').replace(/\*\*/g,'')}</div>`;return;}
+    if(s.match(/^\*\*[^*]+\*\*$/)&&!s.match(/^\*\*.*\*\*.*\S/)){h+=`<div class="ah" style="font-size:13px;margin-top:12px;">${s.replace(/\*\*/g,'')}</div>`;return;}
+    if(s.match(/^[\*\-]\s/)){h+=`<div class="ali"><span class="dot">◆</span><span>${s.replace(/^[\*\-]\s/,'').replace(/\*\*/g,'')}</span></div>`;return;}
+    if(s.match(/^\d+\./)){h+=`<div class="anu"><span class="num">${s.match(/^\d+/)[0]}.</span><span>${s.replace(/^\d+\.\s?/,'').replace(/\*\*/g,'')}</span></div>`;return;}
+    h+=`<p class="ap">${s.replace(/\*\*/g,'')}</p>`;
+  });
+  return h;
+}
+
+// ════════════════════════════════════════════════════════════
+// WEATHER
+// ════════════════════════════════════════════════════════════
+async function loadWeather(){
+  if(!online)return;
+  const el=document.getElementById('wc');
+  el.innerHTML='<div style="font-size:11px;color:var(--faint);">Fetching weather…</div>';
+  let q=S.city||'London';
+  if(S.lat&&S.lon)q=`${S.lat.toFixed(4)},${S.lon.toFixed(4)}`;
+  try{
+    const res=await fetch(`https://wttr.in/${encodeURIComponent(q)}?format=j1`);
+    if(!res.ok)throw 0;
+    const data=await res.json();
+    const cur=data.current_condition[0];
+    const city=data.nearest_area?.[0]?.areaName?.[0]?.value||S.city;
+    const t=cur.temp_C,desc=cur.weatherDesc?.[0]?.value||'',dl=desc.toLowerCase();
+    let cond='cloudy';
+    if(dl.includes('sun')||dl.includes('clear'))cond='sunny';
+    else if(dl.includes('rain')||dl.includes('drizzle'))cond='rainy';
+    else if(parseInt(t)<5)cond='cold';
+    else if(parseInt(t)>22)cond='warm';
+    else if(dl.includes('wind'))cond='windy';
+    const notes={rainy:'Bring a waterproof layer — trench coat or umbrella recommended.',cold:'Layer up — overcoat and scarf are essential today.',warm:'Light fabrics: linen or lightweight wool will serve you well.',windy:'A structured overcoat handles the wind beautifully.',sunny:'A classic suit will shine today.',cloudy:parseInt(t)<12?'A light overcoat or layered blazer is wise today.':'A classic look works perfectly today.'};
+    S.weather={city,temp_c:parseInt(t),condition:cond,description:`${t}°C, ${desc}`,dressing_note:notes[cond]||notes.cloudy};
+    if(!S.city){S.city=city;document.getElementById('city-label').textContent=city;save();}
+    el.innerHTML=`<div style="font-size:22px;line-height:1;margin-bottom:3px;">${WI[cond]||'🌤️'}</div><div style="font-size:13px;color:var(--ink);font-weight:500;">${t}°C · ${desc}</div><div style="font-size:11px;color:var(--muted);line-height:1.45;margin-top:3px;">${S.weather.dressing_note}</div>`;
+  }catch(e){
+    el.innerHTML=`<div style="font-size:11px;color:var(--faint);">Weather unavailable <button onclick="loadWeather()" style="color:var(--gold);background:none;border:none;cursor:pointer;font-family:inherit;">Retry</button></div>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// LOCATION — IP-based primary (no permission needed), GPS optional
+// ════════════════════════════════════════════════════════════
+async function detectLocation(){
+  const btn=document.getElementById('loc-btn');
+  btn.textContent='📍  Detecting…';btn.disabled=true;
+
+  // METHOD 1: IP-based geolocation — works in any browser, no HTTPS/permission required
+  try{
+    const res=await fetch('https://ipapi.co/json/');
+    if(res.ok){
+      const d=await res.json();
+      if(d.city&&d.city!=='undefined'){
+        S.city=d.city;S.lat=d.latitude;S.lon=d.longitude;
+        document.getElementById('city-label').textContent=S.city;
+        document.getElementById('city-input').value=S.city;
+        save();closeModal('city');loadWeather();
+        btn.disabled=false;btn.textContent='📍  Detect My Location';
+        return;
+      }
+    }
+  }catch(e){}
+
+  // METHOD 2: GPS fallback (needs HTTPS + user permission)
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      async pos=>{
+        S.lat=pos.coords.latitude;S.lon=pos.coords.longitude;
+        try{
+          const res=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${S.lat}&lon=${S.lon}&format=json`);
+          const d=await res.json();
+          S.city=d.address?.city||d.address?.town||d.address?.village||'Your Location';
+        }catch{S.city='Your Location';}
+        document.getElementById('city-label').textContent=S.city;
+        document.getElementById('city-input').value=S.city;
+        save();closeModal('city');loadWeather();
+        btn.disabled=false;btn.textContent='📍  Detect My Location';
+      },
+      ()=>{
+        // Both methods failed
+        btn.disabled=false;btn.textContent='📍  Detect My Location';
+        alert('Could not detect location automatically. Please type your city below.');
+      },
+      {timeout:8000,maximumAge:300000}
+    );
+  }else{
+    btn.disabled=false;btn.textContent='📍  Detect My Location';
+    alert('Please type your city manually below.');
+  }
+}
+
+// ── City autocomplete via Nominatim ───────────────────────────────────────────
+async function onCityInput(val){
+  const drop=document.getElementById('city-suggestions');
+  if(val.length<2){drop.style.display='none';return;}
+  clearTimeout(cityAcTimer);
+  cityAcTimer=setTimeout(async()=>{
+    try{
+      const res=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&addressdetails=1&limit=6&featuretype=city`);
+      const results=await res.json();
+      if(!results.length){drop.style.display='none';return;}
+      const items=results.map(r=>{
+        const city=r.address?.city||r.address?.town||r.address?.village||r.display_name.split(',')[0];
+        const country=r.address?.country||'';
+        const display=`${city}${country?', '+country:''}`;
+        return `<div class="city-sug-item" onclick="selectCity('${city.replace(/'/g,"\\'")}','${(r.lat||'').replace(/'/g,"\\'")}','${(r.lon||'').replace(/'/g,"\\'")}')"><strong>${city}</strong><span style="color:var(--faint);font-size:11px;"> ${country}</span></div>`;
+      }).join('');
+      drop.innerHTML=items;
+      drop.style.display='block';
+    }catch(e){drop.style.display='none';}
+  },350);
+}
+
+function selectCity(city,lat,lon){
+  S.city=city;
+  S.lat=parseFloat(lat)||null;
+  S.lon=parseFloat(lon)||null;
+  document.getElementById('city-input').value=city;
+  document.getElementById('city-suggestions').style.display='none';
+}
+
+function onCityKey(e){if(e.key==='Escape')document.getElementById('city-suggestions').style.display='none';}
+
+function saveCity(){
+  const v=document.getElementById('city-input').value.trim();
+  if(!v){alert('Please enter a city name.');return;}
+  S.city=v;
+  // If user typed manually without selecting autocomplete, clear coords
+  const selected=S.lat&&S.lon&&document.getElementById('city-input').value===S.city;
+  if(!selected){S.lat=null;S.lon=null;}
+  document.getElementById('city-label').textContent=S.city;
+  document.getElementById('city-suggestions').style.display='none';
+  save();closeModal('city');loadWeather();
+}
+
+function openCityModal(){
+  document.getElementById('city-input').value=S.city;
+  document.getElementById('city-suggestions').style.display='none';
+  openModal('city');
+}
+
+// ════════════════════════════════════════════════════════════
+// MORNING
+// ════════════════════════════════════════════════════════════
+function setMode(m){S.mode=m;document.getElementById('mw').classList.toggle('active',m==='work');document.getElementById('mc').classList.toggle('active',m==='casual');renderOcc();}
+function renderOcc(){const list=S.mode==='work'?WC:CC,cur=S.mode==='work'?S.workCtx:S.casualCtx;document.getElementById('occ-row').innerHTML=list.map(c=>`<button class="pill${c===cur?' active':''}" onclick="selOcc('${c}')">${c}</button>`).join('');}
+function selOcc(c){if(S.mode==='work')S.workCtx=c;else S.casualCtx=c;renderOcc();}
+
+async function generateMorning(){
+  if(S.wardrobe.length<2){alert('Add at least 2 wardrobe items first.');return;}
+  if(!online){
+    const out=document.getElementById('mout');
+    out.innerHTML=S.weekPlanText
+      ?'<div style="font-size:9px;color:var(--faint);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;">Offline · Cached Plan</div>'+rAI(S.weekPlanText)
+      :'<p class="ap">You\'re offline. Your cached recommendations will appear here after your first online session.</p>';
+    out.style.display='block';
+    return;
+  }
+  document.getElementById('mout').style.display='none';
+  document.getElementById('mact').style.display='none';
+  document.getElementById('mspin').style.display='block';
+  document.getElementById('gen-btn').disabled=true;
+  const items=S.wardrobe.map(i=>`${i.name}|${i.typeGroup}/${i.type}|${i.fit}fit|${i.pattern}|lastWorn:${i.wornDates?.slice(-1)[0]||'never'}`).join('\n');
+  const wx=S.weather?`Weather: ${S.weather.description}. ${S.weather.dressing_note}`:'Assume temperate.';
+  const ctx=S.mode==='work'?`Work: ${S.workCtx}`:`Casual: ${S.casualCtx}`;
+  const hist=S.outfitLog.length?`Recent outfits logged: ${S.outfitLog.slice(0,5).map(e=>e.date+' '+e.context).join(', ')}`:'No history yet.';
+  try{
+    const r=await claude([{role:'user',content:`Today: ${todayFull()}. ${wx}\n${ctx}\n${hist}\n\nWardrobe:\n${items}\n\nGive 3 complete outfit recommendations. Avoid recently worn items. Mix suit separates intelligently (e.g. coat from one suit with trousers of another if colours/patterns work). Include shoes, accessories, watch/jewellery from wardrobe where available.\n\nFormat:\n**Outfit 1 — [Name]**\nItems: [names]\nNote: [2 sentences — why it works & how to wear]\n\n**Outfit 2 — [Name]**\n...\n\n**Outfit 3 — [Name]**\n...\n\n**Today's Styling Principle**\n[One golden styling rule]`}],
+      'You are an elite personal stylist specialising in refined menswear. Be specific, decisive, and fashion-forward.');
+    document.getElementById('mout').innerHTML=rAI(r);
+    document.getElementById('mout').style.display='block';
+    document.getElementById('mact').style.display='block';
+  }catch(e){
+    document.getElementById('mout').innerHTML='<p class="ap" style="color:var(--red);">Error — check connection and try again.</p>';
+    document.getElementById('mout').style.display='block';
+  }
+  document.getElementById('mspin').style.display='none';
+  document.getElementById('gen-btn').disabled=false;
+}
+
+function logOutfit(btn){
+  // Saved locally — 100% offline. This is how history is always tracked.
+  S.outfitLog.unshift({id:Date.now(),date:todayStr(),context:S.mode==='work'?S.workCtx:S.casualCtx,mode:S.mode});
+  save();renderPlanLog();
+  const orig=btn.textContent;btn.textContent='✓ Logged';btn.disabled=true;
+  setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2000);
+}
+
+// ════════════════════════════════════════════════════════════
+// AUTO WEEKLY PLAN
+// ════════════════════════════════════════════════════════════
+function planStale(){if(!S.weekPlanDate)return true;return(Date.now()-new Date(S.weekPlanDate).getTime())/86400000>7;}
+async function maybeAutoPlan(){if(!online||S.wardrobe.length<2||!planStale())return;await generatePlan(false);}
+
+async function generatePlan(manual=true){
+  if(!online){if(manual)alert('No internet — showing cached plan.');renderPlanDays();return;}
+  if(S.wardrobe.length<2){if(manual)alert('Add at least 2 items first.');return;}
+  document.getElementById('pspin').style.display='block';
+  document.getElementById('pregen-btn').disabled=true;
+  const items=S.wardrobe.map(i=>`${i.name}(${i.type},${i.fit},${i.pattern})`).join(', ');
+  const hist=S.outfitLog.slice(0,7).map(e=>e.date+' '+e.context).join(', ')||'none';
+  try{
+    const r=await claude([{role:'user',content:`7-day outfit plan (Mon–Sun). Wardrobe: ${items}.\nWeather: ${S.weather?.description||'temperate'}. Recent history: ${hist}.\nMon–Fri work-appropriate, Sat–Sun casual. Rotate well — no exact repeats.\nReturn ONLY valid JSON (no backticks, no extra text): {"Mon":"1-2 sentence outfit","Tue":"...","Wed":"...","Thu":"...","Fri":"...","Sat":"...","Sun":"..."}`}],
+      'Return only valid JSON. No extra text or markdown.');
+    const s=r.indexOf('{'),e=r.lastIndexOf('}');
+    if(s!==-1){S.weekPlan=JSON.parse(r.slice(s,e+1));S.weekPlanDate=todayStr();S.weekPlanText=r;save();}
+  }catch(e){console.error(e);}
+  document.getElementById('pspin').style.display='none';
+  document.getElementById('pregen-btn').disabled=false;
+  renderPlanDays();renderPlanLog();
+}
+
+function renderPlanDays(){
+  const c=document.getElementById('pdays'),tod=dayShort();
+  if(S.weekPlanDate){document.getElementById('plan-note').style.display='block';document.getElementById('plan-date').textContent=S.weekPlanDate;}
+  if(!Object.keys(S.weekPlan).length){c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--faint);font-size:12px;">${online?'Tap Regenerate to build your plan':'Connect to internet to generate your first plan'}</div>`;return;}
+  c.innerHTML=DAYS.map(day=>{
+    const isT=tod===day,txt=S.weekPlan[day]||'';
+    return `<div class="dc${isT?' today':''}" onclick="togDay('${day}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;${txt?'margin-bottom:5px;':''}">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span style="font-size:12px;font-weight:${isT?700:500};color:${isT?'var(--gold)':'var(--ink)'};">${day}</span>
+          ${isT?'<span style="font-size:8px;background:var(--gold-f);color:var(--gold);padding:2px 7px;border-radius:10px;letter-spacing:0.1em;text-transform:uppercase;">Today</span>':''}
+        </div>
+        ${txt?`<span id="da-${day}" style="font-size:14px;color:var(--faint);">+</span>`:''}
+      </div>
+      ${txt
+        ?`<div style="font-size:11px;color:var(--muted);line-height:1.5;">${txt.slice(0,55)}${txt.length>55?'…':''}</div>
+           <div id="de-${day}" style="display:none;font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-l);">${txt}<br><br><button onclick="event.stopPropagation();logDay('${day}')" style="padding:6px 14px;background:var(--gold);color:white;border:none;border-radius:6px;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;font-weight:600;">Log Worn ✓</button></div>`
+        :'<div style="font-size:11px;color:var(--faintest);">No plan</div>'}
+    </div>`;
+  }).join('');
+}
+function togDay(d){const e=document.getElementById('de-'+d),a=document.getElementById('da-'+d);if(!e)return;const o=e.style.display==='block';DAYS.forEach(x=>{const xe=document.getElementById('de-'+x),xa=document.getElementById('da-'+x);if(xe)xe.style.display='none';if(xa)xa.textContent='+';});if(!o){e.style.display='block';if(a)a.textContent='−';}}
+function logDay(d){S.outfitLog.unshift({id:Date.now(),date:todayStr(),context:d+' plan',mode:'work'});save();renderPlanLog();alert(`${d} outfit logged ✓`);}
+function renderPlanLog(){const s=document.getElementById('plog-sec'),c=document.getElementById('plog');if(!S.outfitLog.length){s.style.display='none';return;}s.style.display='block';c.innerHTML=S.outfitLog.slice(0,8).map(e=>`<div style="background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;color:var(--gold);font-weight:500;">${e.date}</span><span style="font-size:9px;color:var(--faint);">${e.context}</span></div>`).join('');}
+
+// ════════════════════════════════════════════════════════════
+// WARDROBE
+// ════════════════════════════════════════════════════════════
+function renderWardrobe(){
+  const grid=document.getElementById('wgrid'),empty=document.getElementById('wempty');
+  document.getElementById('wcount').textContent=`${S.wardrobe.length} item${S.wardrobe.length!==1?'s':''}`;
+  document.getElementById('wtabs').innerHTML=['All',...Object.keys(IG)].map(t=>`<button class="pill${t===S.activeWTab?' active':''}" onclick="setWT('${t}')">${t}</button>`).join('');
+  const filtered=S.activeWTab==='All'?S.wardrobe:S.wardrobe.filter(i=>i.typeGroup===S.activeWTab);
+  if(!filtered.length){grid.style.display='none';empty.style.display='block';return;}
+  empty.style.display='none';grid.style.display='grid';
+  grid.innerHTML=filtered.map(item=>{
+    const d=daysSince(item.wornDates),freshC=fc(d);
+    const thumb=item.image&&!item.queued?`<img src="${item.image}" alt="${item.name}" loading="lazy"/>`:`<div style="width:40px;height:40px;border-radius:7px;background:${item.color};border:1px solid var(--border);"></div>`;
+    const qb=item.queued?'<div style="position:absolute;top:7px;left:7px;background:var(--gold);color:white;font-size:8px;padding:1px 5px;border-radius:4px;">QUEUED</div>':'';
+    return `<div class="wc" onclick="openDet(${item.id})">
+      <div class="wi" style="background:${item.image&&!item.queued?'#e8e2d8':`linear-gradient(135deg,${item.color}22,${item.color}10)`}">
+        ${thumb}${qb}<div class="fd" style="background:${freshC};"></div>
+      </div>
+      <div style="padding:8px 10px;">
+        <div style="font-size:11px;color:var(--ink);line-height:1.3;margin-bottom:3px;font-weight:500;">${item.name}</div>
+        <div style="font-size:9px;color:var(--faint);">${item.type}${item.fit&&item.fit!=='n/a'?' · '+item.fit:''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function setWT(t){S.activeWTab=t;renderWardrobe();}
+
+function openDet(id){
+  const item=S.wardrobe.find(i=>i.id===id);if(!item)return;
+  const d=daysSince(item.wornDates);
+  document.getElementById('idet').innerHTML=`
+    <div style="display:flex;gap:14px;margin-bottom:16px;">
+      ${item.image&&!item.queued?`<img src="${item.image}" style="width:80px;height:80px;border-radius:10px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;"/>`:`<div style="width:80px;height:80px;border-radius:10px;background:${item.color};border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;">${item.queued?'📷':''}</div>`}
+      <div>
+        <div style="font-size:15px;color:var(--ink);font-weight:500;margin-bottom:4px;">${item.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:7px;">${item.typeGroup} · ${item.type}</div>
+        ${item.queued?'<div style="font-size:9px;color:var(--gold);background:var(--gold-f);padding:3px 8px;border-radius:5px;display:inline-block;margin-bottom:5px;">Awaiting AI analysis</div>':''}
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          ${item.fit&&item.fit!=='n/a'?`<span class="tg" style="background:var(--gold-f);color:var(--gold);">${item.fit} fit</span>`:''}
+          ${item.pattern&&item.pattern!=='solid'?`<span class="tg" style="background:var(--linen);color:var(--muted);">${item.pattern}</span>`:''}
+        </div>
+      </div>
+    </div>
+    <div class="dv"></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:11px;color:var(--muted);">Times worn</span><span style="font-size:11px;color:var(--ink);font-weight:500;">${item.wornDates?.length||0}</span></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:16px;"><span style="font-size:11px;color:var(--muted);">Last worn</span><span style="font-size:11px;color:var(--ink);font-weight:500;">${item.wornDates?.slice(-1)[0]||'Never'}</span></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeModal('item')" style="flex:1;padding:11px;background:var(--linen);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;">Close</button>
+      <button onclick="rmItem(${id})" style="flex:1;padding:11px;background:#fdf0ee;color:var(--red);border:1px solid #f0d0c8;border-radius:8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;">Remove</button>
+    </div>`;
+  openModal('item');
+}
+function rmItem(id){if(!confirm('Remove this item?'))return;S.photoQueue=S.photoQueue.filter(q=>q.id!==id);try{localStorage.removeItem('vqi'+id);}catch(e){}S.wardrobe=S.wardrobe.filter(i=>i.id!==id);save();renderWardrobe();closeModal('item');updQueueBadge();}
+
+// ════════════════════════════════════════════════════════════
+// PHOTO UPLOAD — fixed AI autofill sequencing
+// ════════════════════════════════════════════════════════════
+function updTypes(targetType){
+  // targetType is optional — if provided, selects that type after rebuilding options
+  const g=document.getElementById('igroup').value;
+  const opts=IG[g]||[];
+  document.getElementById('itype').innerHTML=opts.map(t=>`<option>${t}</option>`).join('');
+  // Now set the type if we have a target
+  if(targetType){
+    const sel=document.getElementById('itype');
+    // Try exact match first, then case-insensitive partial match
+    let matched=false;
+    for(let o of sel.options){
+      if(o.value.toLowerCase()===targetType.toLowerCase()){o.selected=true;matched=true;break;}
+    }
+    if(!matched){
+      for(let o of sel.options){
+        if(o.value.toLowerCase().includes(targetType.toLowerCase())||targetType.toLowerCase().includes(o.value.toLowerCase())){o.selected=true;break;}
+      }
+    }
+  }
+}
+
+async function handleImg(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    S.uploadPreview=e.target.result;
+    // Show preview image
+    document.getElementById('uph').style.display='none';
+    let img=document.querySelector('#uz img.prev');
+    if(!img){img=document.createElement('img');img.className='prev';img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0;';document.getElementById('uz').appendChild(img);}
+    img.src=e.target.result;
+
+    if(!online){
+      // Offline — save to queue, pre-fill name
+      document.getElementById('iname').value='Photo item (to be analysed)';
+      return;
+    }
+
+    // Online — AI analysis
+    document.getElementById('uao').style.display='flex';
+    try{
+      const b64=e.target.result.split(',')[1];
+      const r=await claude([{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
+        {type:'text',text:'Analyse this garment or accessory carefully. Return ONLY valid JSON (no backticks, no markdown, no extra text): {"name":"descriptive name e.g. Navy Pinstripe Suit Coat","typeGroup":"must be exactly one of: Tops, Bottoms, Outerwear, Shoes, Accessories, Watches & Jewellery","type":"specific type e.g. Suit Coat, Oxford, Watch, Chinos","color":"dominant color as hex code e.g. #2c3e6e","pattern":"one of: solid, stripe, pinstripe, check, plaid, houndstooth, tweed, other","fit":"one of: slim, classic, regular, wide, relaxed, n/a","category":"one of: work, casual, both"}'}
+      ]}],'You are a fashion expert. Return only valid JSON with no extra text. Be precise about typeGroup — it must exactly match one of the allowed values.');
+
+      // Parse response
+      const s=r.indexOf('{'),en=r.lastIndexOf('}');
+      if(s===-1)throw new Error('No JSON in response');
+      const p=JSON.parse(r.slice(s,en+1));
+
+      // Apply autofill — ORDER MATTERS: group first, then type, then rest
+      if(p.name) document.getElementById('iname').value=p.name;
+
+      // Set group and immediately rebuild type options with target type
+      if(p.typeGroup&&IG[p.typeGroup]){
+        document.getElementById('igroup').value=p.typeGroup;
+        updTypes(p.type); // rebuilds options AND selects the right type in one call
+      } else {
+        // typeGroup didn't match exactly — try to infer from type
+        if(p.type){
+          for(const[group,types] of Object.entries(IG)){
+            if(types.some(t=>t.toLowerCase()===p.type.toLowerCase())){
+              document.getElementById('igroup').value=group;
+              updTypes(p.type);
+              break;
+            }
+          }
+        }
+      }
+
+      if(p.category) document.getElementById('icat').value=p.category;
+      if(p.fit) document.getElementById('ifit').value=p.fit;
+      if(p.pattern) document.getElementById('ipat').value=p.pattern;
+      if(p.color){
+        document.getElementById('icol').value=p.color;
+        document.getElementById('chex').textContent=p.color;
+      }
+    }catch(err){
+      console.error('AI autofill error:',err);
+      // Silently fail — user can fill in manually
+    }
+    document.getElementById('uao').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function addFromUpload(){
+  const name=document.getElementById('iname').value.trim();
+  if(!name){alert('Please enter a name for this item.');return;}
+  const id=Date.now();
+  const isQueued=!online&&!!S.uploadPreview;
+  const item={
+    id,name,
+    typeGroup:document.getElementById('igroup').value,
+    type:document.getElementById('itype').value,
+    category:document.getElementById('icat').value,
+    fit:document.getElementById('ifit').value,
+    pattern:document.getElementById('ipat').value,
+    color:document.getElementById('icol').value,
+    image:S.uploadPreview,
+    wornDates:[],
+    queued:isQueued
+  };
+  if(isQueued){
+    S.photoQueue.push({id,name,image:S.uploadPreview});
+    try{localStorage.setItem('vqi'+id,S.uploadPreview);}catch(e){}
+  }
+  S.wardrobe.push(item);save();renderWardrobe();updQueueBadge();
+  // Reset modal
+  document.getElementById('iname').value='';
+  document.getElementById('icol').value='#1c1812';
+  document.getElementById('chex').textContent='#1c1812';
+  S.uploadPreview=null;
+  const img=document.querySelector('#uz img.prev');if(img)img.remove();
+  document.getElementById('uph').style.display='block';
+  document.getElementById('finput').value='';
+  updTypes();closeModal('upload');
+}
+
+// ════════════════════════════════════════════════════════════
+// PHOTO QUEUE
+// ════════════════════════════════════════════════════════════
+function updQueueBadge(){const n=S.photoQueue.length;document.getElementById('qcount').textContent=n;document.getElementById('queue-btn').style.display=n>0?'block':'none';}
+
+function renderQueue(){
+  const list=document.getElementById('qlist'),empty=document.getElementById('qempty'),btn=document.getElementById('qproc');
+  if(!S.photoQueue.length){list.innerHTML='';empty.style.display='block';btn.style.display='none';return;}
+  empty.style.display='none';btn.style.display=online?'block':'none';
+  list.innerHTML=S.photoQueue.map(q=>`
+    <div class="qi">
+      ${q.image&&q.image.length>50?`<img src="${q.image}" style="width:44px;height:44px;border-radius:7px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;" alt=""/>`:`<div style="width:44px;height:44px;border-radius:7px;background:var(--linen);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📷</div>`}
+      <div style="flex:1;"><div style="font-size:12px;color:var(--ink);font-weight:500;">${q.name||'Unnamed'}</div><div style="font-size:10px;color:var(--faint);margin-top:2px;">Awaiting AI analysis</div></div>
+      <button onclick="rmQueue(${q.id})" style="background:none;border:none;color:var(--faint);cursor:pointer;font-size:18px;padding:4px;">×</button>
+    </div>`).join('');
+}
+function rmQueue(id){S.photoQueue=S.photoQueue.filter(q=>q.id!==id);const item=S.wardrobe.find(i=>i.id===id);if(item)item.queued=false;try{localStorage.removeItem('vqi'+id);}catch(e){}save();renderQueue();renderWardrobe();updQueueBadge();}
+
+async function processQueue(){
+  if(!online||!S.photoQueue.length)return;
+  const btn=document.getElementById('qproc');if(btn){btn.textContent='Analysing…';btn.disabled=true;}
+  for(const q of[...S.photoQueue]){
+    if(!q.image||q.image.length<100)continue;
+    try{
+      const b64=q.image.split(',')[1];if(!b64)continue;
+      const mt=q.image.match(/data:([^;]+);/)?.[1]||'image/jpeg';
+      const r=await claude([{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:mt,data:b64}},
+        {type:'text',text:'Analyse this garment/accessory. Return ONLY valid JSON: {"name":"descriptive name","typeGroup":"Tops|Bottoms|Outerwear|Shoes|Accessories|Watches & Jewellery","type":"specific type","color":"dominant hex","pattern":"solid|stripe|pinstripe|check|plaid|houndstooth|tweed|other","fit":"slim|classic|regular|wide|relaxed|n/a","category":"work|casual|both"}'}
+      ]}],'Return only valid JSON.');
+      const s=r.indexOf('{'),en=r.lastIndexOf('}');
+      if(s!==-1){
+        const p=JSON.parse(r.slice(s,en+1));
+        const item=S.wardrobe.find(i=>i.id===q.id);
+        if(item){Object.assign(item,p);item.queued=false;}
+      }
+      S.photoQueue=S.photoQueue.filter(x=>x.id!==q.id);
+      try{localStorage.removeItem('vqi'+q.id);}catch(e){}
+    }catch(e){console.error(e);}
+  }
+  save();renderWardrobe();renderQueue();updQueueBadge();
+  if(btn){btn.textContent='✦  Analyse All Now';btn.disabled=false;}
+}
+
+// ════════════════════════════════════════════════════════════
+// SMART FORM (fully offline)
+// ════════════════════════════════════════════════════════════
+function openSmartForm(){S.smartStep=0;S.smartAns={};openModal('smart');renderStep();}
+
+function renderStep(){
+  const step=STEPS[S.smartStep];
+  document.getElementById('st-title').textContent=step.label;
+  document.getElementById('st-bar').innerHTML=STEPS.map((_,i)=>`<div class="sd${i<=S.smartStep?' done':''}"></div>`).join('');
+  const opts=step.optsFn?step.optsFn(S.smartAns):step.opts;
+  const back=S.smartStep>0?`<button onclick="stepBack()" style="flex:1;padding:12px;background:var(--linen);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:11px;cursor:pointer;">← Back</button>`:'';
+  const next=`<button onclick="stepNext()" style="flex:2;padding:12px;background:var(--ink);color:var(--cream);border:none;border-radius:8px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;cursor:pointer;">Next →</button>`;
+  const nav=`<div style="display:flex;gap:8px;margin-top:4px;">${back}${next}</div>`;
+
+  if(step.type==='text'){
+    document.getElementById('st-body').innerHTML=`<input id="stxt" class="fi" style="margin-bottom:16px;" placeholder="${step.ph||''}"/>${nav}`;
+    if(S.smartAns[step.id])document.getElementById('stxt').value=S.smartAns[step.id];
+    setTimeout(()=>document.getElementById('stxt')?.focus(),100);
+    return;
+  }
+  if(step.type==='color'){
+    const saved=S.smartAns.color||'#1c1812';
+    const swatches=['#1c1812','#2c3e6e','#3a3a3a','#5a4a3a','#8a7a6a','#c8c0b0','#f5f0e8','#1a3a1a','#4a1a1a','#1a2a4a','#c4a030','#8a6a4a','#4a3a6a','#2a4a5a'].map(c=>`<div onclick="selCol('${c}')" id="cs${c.replace('#','')}" style="width:38px;height:38px;border-radius:7px;background:${c};border:2px solid ${c===saved?'var(--gold)':'var(--border)'};cursor:pointer;flex-shrink:0;"></div>`).join('');
+    document.getElementById('st-body').innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;">${swatches}<div style="display:flex;align-items:center;gap:7px;margin-top:2px;width:100%;"><input type="color" id="ccustom" value="${saved}" style="width:38px;height:38px;border:1px solid var(--border);border-radius:7px;cursor:pointer;" oninput="selCol(this.value)"/><span style="font-size:10px;color:var(--faint);">Custom colour</span></div></div>${nav}`;
+    S.smartAns.color=saved;return;
+  }
+  const cur=S.smartAns[step.id];
+  document.getElementById('st-body').innerHTML=`<div class="og" id="og">${opts.map(o=>`<button class="oc${o===cur?' sel':''}" onclick="selChip('${o}',this)">${o}</button>`).join('')}</div>${nav}`;
+}
+function selChip(v,el){document.querySelectorAll('#og .oc').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');const s=STEPS[S.smartStep];S.smartAns[s.id]=s.map?s.map[v]:v;}
+function selCol(hex){document.querySelectorAll('[id^="cs"]').forEach(el=>el.style.border='2px solid var(--border)');const el=document.getElementById('cs'+hex.replace('#',''));if(el)el.style.border='2px solid var(--gold)';const cc=document.getElementById('ccustom');if(cc)cc.value=hex;S.smartAns.color=hex;}
+function stepNext(){
+  const step=STEPS[S.smartStep];
+  if(step.type==='text'){const v=document.getElementById('stxt')?.value.trim()||'';if(!v){alert('Please enter a name.');return;}S.smartAns[step.id]=v;}
+  else if(step.type==='color'){if(!S.smartAns.color)S.smartAns.color='#1c1812';}
+  else{if(!S.smartAns[step.id]){alert('Please select an option.');return;}}
+  if(S.smartStep<STEPS.length-1){S.smartStep++;renderStep();}
+  else{
+    const a=S.smartAns;
+    S.wardrobe.push({id:Date.now(),name:a.name||`${a.typeGroup} item`,typeGroup:a.typeGroup||'Tops',type:a.type||(IG[a.typeGroup]?.[0]||'Item'),category:a.category||'work',fit:a.fit||'regular',pattern:a.pattern||'solid',color:a.color||'#1c1812',image:null,wornDates:[],queued:false});
+    save();renderWardrobe();closeModal('smart');
+  }
+}
+function stepBack(){if(S.smartStep>0){S.smartStep--;renderStep();}}
+
+// ════════════════════════════════════════════════════════════
+// GAPS & TRENDS
+// ════════════════════════════════════════════════════════════
+async function findGaps(){
+  if(!S.wardrobe.length){alert('Add some items first.');return;}
+  if(!online){alert('This feature needs internet.');return;}
+  document.getElementById('gap-btn').disabled=true;document.getElementById('gspin').style.display='block';document.getElementById('gout').style.display='none';
+  try{
+    const r=await claude([{role:'user',content:`Wardrobe: ${S.wardrobe.map(i=>`${i.name}(${i.typeGroup})`).join(', ')}.\nOccasions: ${[...WC,...CC].join(', ')}.\nIdentify 5 most important missing pieces. Be very specific (e.g. "a mid-grey herringbone blazer"). Explain why each matters and how it pairs with existing items.`}],
+      'Personal stylist. Specific, actionable wardrobe gap analysis.',true);
+    document.getElementById('gout').innerHTML=rAI(r);document.getElementById('gout').style.display='block';
+  }catch(e){document.getElementById('gout').innerHTML='<p class="ap" style="color:var(--red);">Error — check connection.</p>';document.getElementById('gout').style.display='block';}
+  document.getElementById('gspin').style.display='none';document.getElementById('gap-btn').disabled=false;
+}
+
+async function fetchTrends(){
+  if(!online){alert('This feature needs internet.');return;}
+  document.getElementById('trend-btn').style.display='none';document.getElementById('tspin').style.display='block';document.getElementById('tout').style.display='none';
+  try{
+    const r=await claude([{role:'user',content:"Search for latest men's fashion trends SS 2026. Cover silhouettes, colours, suiting, separates styling. Focus on quiet luxury, old money aesthetic. 5 key actionable trends for a refined wardrobe."}],
+      'Fashion editor covering refined menswear. Use web search for current 2026 trends.',true);
+    document.getElementById('tout').innerHTML=rAI(r);document.getElementById('tout').style.display='block';
+  }catch(e){document.getElementById('tout').innerHTML='<p class="ap" style="color:var(--red);">Error — check connection.</p>';document.getElementById('tout').style.display='block';}
+  document.getElementById('tspin').style.display='none';
+}
+
+// ════════════════════════════════════════════════════════════
+// NAVIGATION & MODALS
+// ════════════════════════════════════════════════════════════
+function showScreen(name,btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  document.getElementById('content').scrollTop=0;
+  if(name==='wardrobe')renderWardrobe();
+  if(name==='planner'){renderPlanDays();renderPlanLog();}
+}
+function openModal(n){document.getElementById('modal-'+n).classList.add('open');if(n==='queue')renderQueue();}
+function closeModal(n){document.getElementById('modal-'+n).classList.remove('open');}
+function openUploadModal(){updTypes();openModal('upload');}
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+function init(){
+  load();updOnline();
+  document.getElementById('date-label').textContent=todayFull();
+  renderOcc();
+  document.getElementById('city-label').textContent=S.city||'Set City';
+  updQueueBadge();updTypes();
+
+  // Show cached plan offline on morning screen
+  if(!online&&S.weekPlanText){
+    document.getElementById('mout').innerHTML='<div style="font-size:9px;color:var(--faint);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;">Offline · Cached Plan</div>'+rAI(S.weekPlanText);
+    document.getElementById('mout').style.display='block';
+  }
+
+  // Location: try IP-based first (silent, no permission), then fall back
+  if(!S.city){
+    fetch('https://ipapi.co/json/')
+      .then(r=>r.json())
+      .then(d=>{
+        if(d.city&&d.city!=='undefined'){
+          S.city=d.city;S.lat=d.latitude;S.lon=d.longitude;
+          document.getElementById('city-label').textContent=S.city;
+          save();
+        }
+        loadWeather();
+      })
+      .catch(()=>loadWeather());
+  }else{
+    loadWeather();
+  }
+
+  // Auto-generate weekly plan in background if stale
+  setTimeout(maybeAutoPlan,3500);
+}
+
+init();
+</script>
+</body>
+</html>
