@@ -66,6 +66,7 @@ input:focus,select:focus{outline:none;}
 .city-pill{display:flex;align-items:center;gap:5px;background:var(--gold-f);border:1px solid var(--border);border-radius:20px;padding:5px 10px;cursor:pointer;}
 .city-pill span{font-size:11px;color:var(--ink-l);}
 #queue-btn{display:none;background:var(--gold-f);color:var(--gold);border:1px solid var(--border);border-radius:20px;padding:5px 10px;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:0.05em;}
+#update-btn{background:var(--white);color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:5px 10px;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:0.05em;}
 
 #content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
 .screen{padding:18px 18px 32px;display:none;animation:fu 0.3s ease;}
@@ -138,6 +139,11 @@ input:focus,select:focus{outline:none;}
 .city-sug-item:last-child{border-bottom:none;}
 .city-sug-item:active{background:var(--gold-f);}
 .city-input-wrap{position:relative;}
+.status-note{display:none;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:11px;color:var(--muted);line-height:1.55;}
+.status-note.show{display:block;}
+.status-note.error{background:#fdf0ee;border-color:#f0d0c8;color:var(--red);}
+.status-note.warn{background:#f8f1e2;border-color:#ead8ae;color:#7a5f22;}
+.status-note.success{background:#edf6ef;border-color:#c9e2cf;color:var(--green);}
 </style>
 </head>
 <body>
@@ -148,6 +154,7 @@ input:focus,select:focus{outline:none;}
   <div><div class="logo">VALET</div><div class="logo-sub">personal stylist</div></div>
   <div class="header-right">
     <div class="online-dot" id="odot"></div>
+    <button id="update-btn" onclick="forceAppUpdate()">↻ Update</button>
     <button id="queue-btn" onclick="openModal('queue')">📷 <span id="qcount">0</span> queued</button>
     <div class="city-pill" onclick="openCityModal()"><span>📍</span><span id="city-label">Locating…</span></div>
   </div>
@@ -165,6 +172,7 @@ input:focus,select:focus{outline:none;}
   <div class="mt"><button class="mb active" id="mw" onclick="setMode('work')">Work</button><button class="mb" id="mc" onclick="setMode('casual')">Casual</button></div>
   <div class="sr" id="occ-row" style="margin-bottom:14px;"></div>
   <button class="gbtn" id="gen-btn" onclick="generateMorning()">✦  Generate Today's Outfits</button>
+  <div id="mnote" class="status-note"></div>
   <div id="mspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div><div style="text-align:center;font-size:11px;color:var(--faint);margin-top:2px;">Curating your looks</div></div>
   <div id="mout" class="ao" style="display:none;"></div>
   <div id="mact" style="display:none;margin-top:16px;">
@@ -202,6 +210,7 @@ input:focus,select:focus{outline:none;}
   <div style="font-size:16px;color:var(--ink);font-weight:400;letter-spacing:0.04em;margin-bottom:3px;">Weekly Planner</div>
   <div style="font-size:10px;color:var(--faint);margin-bottom:6px;">Auto-refreshes weekly · cached for offline</div>
   <div id="plan-note" style="display:none;font-size:10px;color:var(--faint);text-align:center;margin-bottom:8px;">Cached plan from <span id="plan-date"></span></div>
+  <div id="pnote" class="status-note"></div>
   <div id="pspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div></div>
   <div id="pdays"></div>
   <button onclick="generatePlan(true)" id="pregen-btn" style="width:100%;padding:11px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;margin-top:4px;margin-bottom:14px;">↻  Regenerate Plan</button>
@@ -214,6 +223,7 @@ input:focus,select:focus{outline:none;}
   <div style="font-size:10px;color:var(--faint);margin-bottom:14px;">What's missing to complete your wardrobe</div>
   <div class="ib">AI cross-references your wardrobe against your occasions and 2026 trends to identify pieces that unlock the most new combinations.</div>
   <button class="gbtn" id="gap-btn" onclick="findGaps()">◇  Analyse My Gaps</button>
+  <div id="gnote" class="status-note"></div>
   <div id="gspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div></div>
   <div id="gout" class="ao" style="display:none;"></div>
 </div>
@@ -226,6 +236,7 @@ input:focus,select:focus{outline:none;}
   </div>
   <div style="font-size:10px;color:var(--faint);margin-bottom:14px;">Menswear intelligence · SS 2026</div>
   <button class="gbtn" id="trend-btn" onclick="fetchTrends()">◈  Search Latest Trends</button>
+  <div id="tnote" class="status-note"></div>
   <div id="tspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div></div>
   <div id="tout" class="ao" style="display:none;"></div>
 </div>
@@ -259,6 +270,7 @@ input:focus,select:focus{outline:none;}
         onkeydown="onCityKey(event)"/>
       <div id="city-suggestions"></div>
     </div>
+    <div id="city-note" class="status-note" style="margin-top:12px;"></div>
 
     <button onclick="saveCity()" style="width:100%;padding:12px;background:var(--ink);color:var(--cream);border:none;border-radius:8px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600;cursor:pointer;margin-top:12px;">Save &amp; Refresh Weather</button>
   </div>
@@ -282,6 +294,7 @@ input:focus,select:focus{outline:none;}
       </div>
     </div>
     <input type="file" id="finput" accept="image/*" capture="environment" style="display:none;" onchange="handleImg(this)"/>
+    <div id="upload-note" class="status-note"></div>
     <div style="margin-bottom:12px;"><div class="fl">Name <span style="color:var(--faintest);font-size:9px;">(auto-filled by AI)</span></div><input id="iname" class="fi" placeholder="e.g. Navy Suit Coat"/></div>
     <div class="g2" style="margin-bottom:12px;">
       <div><div class="fl">Group</div><select id="igroup" class="fs" onchange="updTypes()"><option>Tops</option><option>Bottoms</option><option>Outerwear</option><option>Shoes</option><option>Accessories</option><option>Watches &amp; Jewellery</option></select></div>
@@ -306,6 +319,7 @@ input:focus,select:focus{outline:none;}
     <div class="mh"></div>
     <div style="font-size:15px;color:var(--ink);font-weight:400;margin-bottom:2px;" id="st-title">Add Item</div>
     <div style="font-size:10px;color:var(--faint);margin-bottom:14px;">Works fully offline · tap your answers</div>
+    <div id="smart-note" class="status-note"></div>
     <div class="sb" id="st-bar"></div>
     <div id="st-body"></div>
   </div>
@@ -317,6 +331,7 @@ input:focus,select:focus{outline:none;}
     <div class="mh"></div>
     <div style="font-size:15px;color:var(--ink);font-weight:400;margin-bottom:3px;">Photo Queue</div>
     <div style="font-size:10px;color:var(--faint);margin-bottom:16px;">Waiting to be AI-analysed when online</div>
+    <div id="qnote" class="status-note"></div>
     <div id="qlist"></div>
     <div id="qempty" style="text-align:center;padding:28px;color:var(--faint);font-size:12px;display:none;">Queue is empty</div>
     <button id="qproc" onclick="processQueue()" style="display:none;width:100%;padding:12px;background:var(--ink);color:var(--cream);border:none;border-radius:10px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600;cursor:pointer;margin-top:8px;">✦  Analyse All Now</button>
@@ -368,6 +383,23 @@ let S={
 };
 let online=navigator.onLine;
 let cityAcTimer=null; // debounce timer for autocomplete
+const CFG={
+  ai:{
+    enabled:false,
+    endpoint:'',
+    model:''
+  },
+  networkTimeoutMs:9000
+};
+const TXT={
+  aiUnavailable:'AI styling is not configured in this build yet. Core wardrobe and offline planning still work.',
+  aiPhotoUnavailable:'Photo analysis is unavailable until an AI endpoint is configured. You can still fill in the item manually.',
+  weatherUnavailable:'Weather is unavailable right now. You can retry when the connection settles.',
+  citySearchUnavailable:'City suggestions are unavailable right now. You can still type your city manually.',
+  cityDetectUnavailable:'Could not detect your location automatically. Please type your city below.',
+  queueRetry:'Some queued photos could not be analysed yet. They will stay in the queue so you can retry.',
+  noCachedPlan:'No cached plan yet. Connect once to build your first weekly plan.'
+};
 
 // ════════════════════════════════════════════════════════════
 // PERSISTENCE — history always saved locally, 100% offline
@@ -420,14 +452,78 @@ const todayFull=()=>new Date().toLocaleDateString('en-GB',{weekday:'long',day:'n
 const dayShort=()=>new Date().toLocaleDateString('en-GB',{weekday:'short'});
 const daysSince=d=>{if(!d?.length)return null;const l=new Date(Math.max(...d.map(x=>new Date(x))));return Math.floor((Date.now()-l)/86400000);};
 const fc=d=>d===null?'#9a7c4a':d>14?'#2a5a3a':d>7?'#c4a96e':'#8a3a2a';
+const isFiniteCoord=v=>Number.isFinite(v)&&Math.abs(v)<=180;
+const hasCoords=()=>isFiniteCoord(S.lat)&&isFiniteCoord(S.lon);
 
-async function claude(msgs,sys='',search=false){
-  const b={model:'claude-sonnet-4-20250514',max_tokens:1500,messages:msgs};
-  if(sys)b.system=sys;
-  if(search)b.tools=[{type:'web_search_20250305',name:'web_search'}];
-  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
-  const d=await r.json();
-  return d.content?.map(x=>x.text||'').filter(Boolean).join('')||'';
+function escapeHtml(v=''){
+  return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function showNote(id,msg='',tone='warn'){
+  const el=document.getElementById(id);
+  if(!el)return;
+  if(!msg){
+    el.className='status-note';
+    el.textContent='';
+    return;
+  }
+  el.className=`status-note show ${tone}`;
+  el.textContent=msg;
+}
+
+function forceAppUpdate(){
+  const url=new URL(window.location.href);
+  url.searchParams.set('updated',Date.now());
+  window.location.href=url.toString();
+}
+
+function setBtnBusy(id,busy,label){
+  const btn=document.getElementById(id);
+  if(!btn)return;
+  if(busy){
+    btn.dataset.label=btn.textContent;
+    btn.textContent=label;
+    btn.disabled=true;
+    return;
+  }
+  btn.textContent=btn.dataset.label||btn.textContent;
+  btn.disabled=false;
+}
+
+async function fetchJSON(url,{timeout=CFG.networkTimeoutMs,headers={},...opts}={}){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeout);
+  try{
+    const res=await fetch(url,{...opts,headers,signal:controller.signal});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
+async function fetchAI(msgs,sys='',search=false){
+  if(!CFG.ai.enabled||!CFG.ai.endpoint)throw new Error('AI_UNAVAILABLE');
+  const body={messages:msgs,system:sys,search};
+  const data=await fetchJSON(CFG.ai.endpoint,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body),
+    timeout:15000
+  });
+  if(typeof data?.text!=='string'||!data.text.trim())throw new Error('AI_BAD_RESPONSE');
+  return data.text;
+}
+
+async function safeJSONParse(raw){
+  const s=raw.indexOf('{'),e=raw.lastIndexOf('}');
+  if(s===-1||e===-1||e<s)throw new Error('INVALID_JSON');
+  return JSON.parse(raw.slice(s,e+1));
+}
+
+function setWeatherState(msg,tone='warn'){
+  const el=document.getElementById('wc');
+  el.innerHTML=`<div style="font-size:11px;color:${tone==='error'?'var(--red)':'var(--faint)'};">${escapeHtml(msg)}</div>`;
 }
 
 function rAI(t){
@@ -448,16 +544,17 @@ function rAI(t){
 // WEATHER
 // ════════════════════════════════════════════════════════════
 async function loadWeather(){
-  if(!online)return;
-  const el=document.getElementById('wc');
-  el.innerHTML='<div style="font-size:11px;color:var(--faint);">Fetching weather…</div>';
+  if(!online){
+    setWeatherState(S.weather?`Offline. Last known weather: ${S.weather.description}`:'Offline. Weather will refresh once you reconnect.');
+    return;
+  }
+  setWeatherState('Fetching weather…');
   let q=S.city||'London';
-  if(S.lat&&S.lon)q=`${S.lat.toFixed(4)},${S.lon.toFixed(4)}`;
+  if(hasCoords())q=`${S.lat.toFixed(4)},${S.lon.toFixed(4)}`;
   try{
-    const res=await fetch(`https://wttr.in/${encodeURIComponent(q)}?format=j1`);
-    if(!res.ok)throw 0;
-    const data=await res.json();
-    const cur=data.current_condition[0];
+    const data=await fetchJSON(`https://wttr.in/${encodeURIComponent(q)}?format=j1`);
+    const cur=data?.current_condition?.[0];
+    if(!cur)throw new Error('WEATHER_BAD_RESPONSE');
     const city=data.nearest_area?.[0]?.areaName?.[0]?.value||S.city;
     const t=cur.temp_C,desc=cur.weatherDesc?.[0]?.value||'',dl=desc.toLowerCase();
     let cond='cloudy';
@@ -469,9 +566,10 @@ async function loadWeather(){
     const notes={rainy:'Bring a waterproof layer — trench coat or umbrella recommended.',cold:'Layer up — overcoat and scarf are essential today.',warm:'Light fabrics: linen or lightweight wool will serve you well.',windy:'A structured overcoat handles the wind beautifully.',sunny:'A classic suit will shine today.',cloudy:parseInt(t)<12?'A light overcoat or layered blazer is wise today.':'A classic look works perfectly today.'};
     S.weather={city,temp_c:parseInt(t),condition:cond,description:`${t}°C, ${desc}`,dressing_note:notes[cond]||notes.cloudy};
     if(!S.city){S.city=city;document.getElementById('city-label').textContent=city;save();}
-    el.innerHTML=`<div style="font-size:22px;line-height:1;margin-bottom:3px;">${WI[cond]||'🌤️'}</div><div style="font-size:13px;color:var(--ink);font-weight:500;">${t}°C · ${desc}</div><div style="font-size:11px;color:var(--muted);line-height:1.45;margin-top:3px;">${S.weather.dressing_note}</div>`;
+    document.getElementById('wc').innerHTML=`<div style="font-size:22px;line-height:1;margin-bottom:3px;">${WI[cond]||'🌤️'}</div><div style="font-size:13px;color:var(--ink);font-weight:500;">${escapeHtml(t)}°C · ${escapeHtml(desc)}</div><div style="font-size:11px;color:var(--muted);line-height:1.45;margin-top:3px;">${escapeHtml(S.weather.dressing_note)}</div>`;
   }catch(e){
-    el.innerHTML=`<div style="font-size:11px;color:var(--faint);">Weather unavailable <button onclick="loadWeather()" style="color:var(--gold);background:none;border:none;cursor:pointer;font-family:inherit;">Retry</button></div>`;
+    console.error('Weather error:',e);
+    setWeatherState(S.weather?`Weather refresh failed. Last known: ${S.weather.description}`:TXT.weatherUnavailable,'error');
   }
 }
 
@@ -480,21 +578,19 @@ async function loadWeather(){
 // ════════════════════════════════════════════════════════════
 async function detectLocation(){
   const btn=document.getElementById('loc-btn');
+  showNote('city-note');
   btn.textContent='📍  Detecting…';btn.disabled=true;
 
   // METHOD 1: IP-based geolocation — works in any browser, no HTTPS/permission required
   try{
-    const res=await fetch('https://ipapi.co/json/');
-    if(res.ok){
-      const d=await res.json();
-      if(d.city&&d.city!=='undefined'){
-        S.city=d.city;S.lat=d.latitude;S.lon=d.longitude;
-        document.getElementById('city-label').textContent=S.city;
-        document.getElementById('city-input').value=S.city;
-        save();closeModal('city');loadWeather();
-        btn.disabled=false;btn.textContent='📍  Detect My Location';
-        return;
-      }
+    const d=await fetchJSON('https://ipapi.co/json/');
+    if(d.city&&d.city!=='undefined'){
+      S.city=d.city;S.lat=parseFloat(d.latitude)||null;S.lon=parseFloat(d.longitude)||null;
+      document.getElementById('city-label').textContent=S.city;
+      document.getElementById('city-input').value=S.city;
+      save();closeModal('city');loadWeather();
+      btn.disabled=false;btn.textContent='📍  Detect My Location';
+      return;
     }
   }catch(e){}
 
@@ -504,8 +600,9 @@ async function detectLocation(){
       async pos=>{
         S.lat=pos.coords.latitude;S.lon=pos.coords.longitude;
         try{
-          const res=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${S.lat}&lon=${S.lon}&format=json`);
-          const d=await res.json();
+          const d=await fetchJSON(`https://nominatim.openstreetmap.org/reverse?lat=${S.lat}&lon=${S.lon}&format=json`,{
+            headers:{'Accept':'application/json'}
+          });
           S.city=d.address?.city||d.address?.town||d.address?.village||'Your Location';
         }catch{S.city='Your Location';}
         document.getElementById('city-label').textContent=S.city;
@@ -516,43 +613,49 @@ async function detectLocation(){
       ()=>{
         // Both methods failed
         btn.disabled=false;btn.textContent='📍  Detect My Location';
-        alert('Could not detect location automatically. Please type your city below.');
+        showNote('city-note',TXT.cityDetectUnavailable,'error');
       },
       {timeout:8000,maximumAge:300000}
     );
   }else{
     btn.disabled=false;btn.textContent='📍  Detect My Location';
-    alert('Please type your city manually below.');
+    showNote('city-note','Location permission is unavailable in this browser. Please type your city manually.','warn');
   }
 }
 
 // ── City autocomplete via Nominatim ───────────────────────────────────────────
 async function onCityInput(val){
   const drop=document.getElementById('city-suggestions');
+  showNote('city-note');
   if(val.length<2){drop.style.display='none';return;}
   clearTimeout(cityAcTimer);
   cityAcTimer=setTimeout(async()=>{
     try{
-      const res=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&addressdetails=1&limit=6&featuretype=city`);
-      const results=await res.json();
+      const results=await fetchJSON(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&addressdetails=1&limit=6&featuretype=city`,{
+        headers:{'Accept':'application/json'}
+      });
       if(!results.length){drop.style.display='none';return;}
       const items=results.map(r=>{
         const city=r.address?.city||r.address?.town||r.address?.village||r.display_name.split(',')[0];
         const country=r.address?.country||'';
-        const display=`${city}${country?', '+country:''}`;
-        return `<div class="city-sug-item" onclick="selectCity('${city.replace(/'/g,"\\'")}','${(r.lat||'').replace(/'/g,"\\'")}','${(r.lon||'').replace(/'/g,"\\'")}')"><strong>${city}</strong><span style="color:var(--faint);font-size:11px;"> ${country}</span></div>`;
+        const payload=encodeURIComponent(JSON.stringify({city,lat:r.lat||'',lon:r.lon||''}));
+        return `<div class="city-sug-item" onclick="selectCity('${payload}')"><strong>${escapeHtml(city)}</strong><span style="color:var(--faint);font-size:11px;"> ${escapeHtml(country)}</span></div>`;
       }).join('');
       drop.innerHTML=items;
       drop.style.display='block';
-    }catch(e){drop.style.display='none';}
+    }catch(e){
+      drop.style.display='none';
+      showNote('city-note',TXT.citySearchUnavailable,'warn');
+    }
   },350);
 }
 
-function selectCity(city,lat,lon){
-  S.city=city;
-  S.lat=parseFloat(lat)||null;
-  S.lon=parseFloat(lon)||null;
-  document.getElementById('city-input').value=city;
+function selectCity(payload){
+  const parsed=JSON.parse(decodeURIComponent(payload));
+  S.city=parsed.city;
+  S.lat=parseFloat(parsed.lat)||null;
+  S.lon=parseFloat(parsed.lon)||null;
+  document.getElementById('city-input').value=parsed.city;
   document.getElementById('city-suggestions').style.display='none';
 }
 
@@ -560,19 +663,20 @@ function onCityKey(e){if(e.key==='Escape')document.getElementById('city-suggesti
 
 function saveCity(){
   const v=document.getElementById('city-input').value.trim();
-  if(!v){alert('Please enter a city name.');return;}
+  if(!v){showNote('city-note','Please enter a city name.','error');return;}
+  const selectedCoords=hasCoords()&&v===S.city;
   S.city=v;
-  // If user typed manually without selecting autocomplete, clear coords
-  const selected=S.lat&&S.lon&&document.getElementById('city-input').value===S.city;
-  if(!selected){S.lat=null;S.lon=null;}
+  if(!selectedCoords){S.lat=null;S.lon=null;}
   document.getElementById('city-label').textContent=S.city;
   document.getElementById('city-suggestions').style.display='none';
+  showNote('city-note',selectedCoords?'Saved your selected city. Refreshing weather…':'Saved your city. Using city-based weather lookup.','success');
   save();closeModal('city');loadWeather();
 }
 
 function openCityModal(){
   document.getElementById('city-input').value=S.city;
   document.getElementById('city-suggestions').style.display='none';
+  showNote('city-note');
   openModal('city');
 }
 
@@ -584,35 +688,45 @@ function renderOcc(){const list=S.mode==='work'?WC:CC,cur=S.mode==='work'?S.work
 function selOcc(c){if(S.mode==='work')S.workCtx=c;else S.casualCtx=c;renderOcc();}
 
 async function generateMorning(){
-  if(S.wardrobe.length<2){alert('Add at least 2 wardrobe items first.');return;}
+  if(S.wardrobe.length<2){showNote('mnote','Add at least 2 wardrobe items first.','warn');return;}
   if(!online){
     const out=document.getElementById('mout');
+    showNote('mnote',S.weekPlanText?'Offline. Showing your cached weekly plan instead.':'Offline. Connect once to unlock AI styling recommendations.','warn');
     out.innerHTML=S.weekPlanText
       ?'<div style="font-size:9px;color:var(--faint);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;">Offline · Cached Plan</div>'+rAI(S.weekPlanText)
       :'<p class="ap">You\'re offline. Your cached recommendations will appear here after your first online session.</p>';
     out.style.display='block';
     return;
   }
+  if(!CFG.ai.enabled||!CFG.ai.endpoint){
+    showNote('mnote',TXT.aiUnavailable,'warn');
+    document.getElementById('mout').style.display='none';
+    document.getElementById('mact').style.display='none';
+    return;
+  }
+  showNote('mnote');
   document.getElementById('mout').style.display='none';
   document.getElementById('mact').style.display='none';
   document.getElementById('mspin').style.display='block';
-  document.getElementById('gen-btn').disabled=true;
+  setBtnBusy('gen-btn',true,'Curating…');
   const items=S.wardrobe.map(i=>`${i.name}|${i.typeGroup}/${i.type}|${i.fit}fit|${i.pattern}|lastWorn:${i.wornDates?.slice(-1)[0]||'never'}`).join('\n');
   const wx=S.weather?`Weather: ${S.weather.description}. ${S.weather.dressing_note}`:'Assume temperate.';
   const ctx=S.mode==='work'?`Work: ${S.workCtx}`:`Casual: ${S.casualCtx}`;
   const hist=S.outfitLog.length?`Recent outfits logged: ${S.outfitLog.slice(0,5).map(e=>e.date+' '+e.context).join(', ')}`:'No history yet.';
   try{
-    const r=await claude([{role:'user',content:`Today: ${todayFull()}. ${wx}\n${ctx}\n${hist}\n\nWardrobe:\n${items}\n\nGive 3 complete outfit recommendations. Avoid recently worn items. Mix suit separates intelligently (e.g. coat from one suit with trousers of another if colours/patterns work). Include shoes, accessories, watch/jewellery from wardrobe where available.\n\nFormat:\n**Outfit 1 — [Name]**\nItems: [names]\nNote: [2 sentences — why it works & how to wear]\n\n**Outfit 2 — [Name]**\n...\n\n**Outfit 3 — [Name]**\n...\n\n**Today's Styling Principle**\n[One golden styling rule]`}],
+    const r=await fetchAI([{role:'user',content:`Today: ${todayFull()}. ${wx}\n${ctx}\n${hist}\n\nWardrobe:\n${items}\n\nGive 3 complete outfit recommendations. Avoid recently worn items. Mix suit separates intelligently (e.g. coat from one suit with trousers of another if colours/patterns work). Include shoes, accessories, watch/jewellery from wardrobe where available.\n\nFormat:\n**Outfit 1 — [Name]**\nItems: [names]\nNote: [2 sentences — why it works & how to wear]\n\n**Outfit 2 — [Name]**\n...\n\n**Outfit 3 — [Name]**\n...\n\n**Today's Styling Principle**\n[One golden styling rule]`}],
       'You are an elite personal stylist specialising in refined menswear. Be specific, decisive, and fashion-forward.');
     document.getElementById('mout').innerHTML=rAI(r);
     document.getElementById('mout').style.display='block';
     document.getElementById('mact').style.display='block';
+    showNote('mnote','Fresh styling recommendations are ready.','success');
   }catch(e){
-    document.getElementById('mout').innerHTML='<p class="ap" style="color:var(--red);">Error — check connection and try again.</p>';
+    document.getElementById('mout').innerHTML='<p class="ap" style="color:var(--red);">Styling recommendations are unavailable right now.</p>';
     document.getElementById('mout').style.display='block';
+    showNote('mnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not generate outfits right now. Please retry shortly.','error');
   }
   document.getElementById('mspin').style.display='none';
-  document.getElementById('gen-btn').disabled=false;
+  setBtnBusy('gen-btn',false);
 }
 
 function logOutfit(btn){
@@ -630,27 +744,45 @@ function planStale(){if(!S.weekPlanDate)return true;return(Date.now()-new Date(S
 async function maybeAutoPlan(){if(!online||S.wardrobe.length<2||!planStale())return;await generatePlan(false);}
 
 async function generatePlan(manual=true){
-  if(!online){if(manual)alert('No internet — showing cached plan.');renderPlanDays();return;}
-  if(S.wardrobe.length<2){if(manual)alert('Add at least 2 items first.');return;}
+  if(!online){
+    if(manual)showNote('pnote',Object.keys(S.weekPlan).length?'Offline. Showing cached weekly plan.':TXT.noCachedPlan,'warn');
+    renderPlanDays();
+    return;
+  }
+  if(S.wardrobe.length<2){
+    if(manual)showNote('pnote','Add at least 2 items first.','warn');
+    return;
+  }
+  if(!CFG.ai.enabled||!CFG.ai.endpoint){
+    showNote('pnote',Object.keys(S.weekPlan).length?`${TXT.aiUnavailable} Showing your last cached plan below.`:TXT.aiUnavailable,'warn');
+    renderPlanDays();
+    return;
+  }
+  showNote('pnote');
   document.getElementById('pspin').style.display='block';
-  document.getElementById('pregen-btn').disabled=true;
+  setBtnBusy('pregen-btn',true,'Generating…');
   const items=S.wardrobe.map(i=>`${i.name}(${i.type},${i.fit},${i.pattern})`).join(', ');
   const hist=S.outfitLog.slice(0,7).map(e=>e.date+' '+e.context).join(', ')||'none';
   try{
-    const r=await claude([{role:'user',content:`7-day outfit plan (Mon–Sun). Wardrobe: ${items}.\nWeather: ${S.weather?.description||'temperate'}. Recent history: ${hist}.\nMon–Fri work-appropriate, Sat–Sun casual. Rotate well — no exact repeats.\nReturn ONLY valid JSON (no backticks, no extra text): {"Mon":"1-2 sentence outfit","Tue":"...","Wed":"...","Thu":"...","Fri":"...","Sat":"...","Sun":"..."}`}],
+    const r=await fetchAI([{role:'user',content:`7-day outfit plan (Mon–Sun). Wardrobe: ${items}.\nWeather: ${S.weather?.description||'temperate'}. Recent history: ${hist}.\nMon–Fri work-appropriate, Sat–Sun casual. Rotate well — no exact repeats.\nReturn ONLY valid JSON (no backticks, no extra text): {"Mon":"1-2 sentence outfit","Tue":"...","Wed":"...","Thu":"...","Fri":"...","Sat":"...","Sun":"..."}`}],
       'Return only valid JSON. No extra text or markdown.');
-    const s=r.indexOf('{'),e=r.lastIndexOf('}');
-    if(s!==-1){S.weekPlan=JSON.parse(r.slice(s,e+1));S.weekPlanDate=todayStr();S.weekPlanText=r;save();}
-  }catch(e){console.error(e);}
+    const parsed=await safeJSONParse(r);
+    S.weekPlan=parsed;S.weekPlanDate=todayStr();S.weekPlanText=r;save();
+    showNote('pnote','Weekly plan refreshed and cached for offline use.','success');
+  }catch(e){
+    console.error(e);
+    showNote('pnote',Object.keys(S.weekPlan).length?'Could not refresh the plan. Your cached version is still available.':'Could not generate your weekly plan right now.','error');
+  }
   document.getElementById('pspin').style.display='none';
-  document.getElementById('pregen-btn').disabled=false;
+  setBtnBusy('pregen-btn',false);
   renderPlanDays();renderPlanLog();
 }
 
 function renderPlanDays(){
   const c=document.getElementById('pdays'),tod=dayShort();
   if(S.weekPlanDate){document.getElementById('plan-note').style.display='block';document.getElementById('plan-date').textContent=S.weekPlanDate;}
-  if(!Object.keys(S.weekPlan).length){c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--faint);font-size:12px;">${online?'Tap Regenerate to build your plan':'Connect to internet to generate your first plan'}</div>`;return;}
+  else document.getElementById('plan-note').style.display='none';
+  if(!Object.keys(S.weekPlan).length){c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--faint);font-size:12px;">${online?'Tap Regenerate to build your plan':TXT.noCachedPlan}</div>`;return;}
   c.innerHTML=DAYS.map(day=>{
     const isT=tod===day,txt=S.weekPlan[day]||'';
     return `<div class="dc${isT?' today':''}" onclick="togDay('${day}')">
@@ -669,7 +801,7 @@ function renderPlanDays(){
   }).join('');
 }
 function togDay(d){const e=document.getElementById('de-'+d),a=document.getElementById('da-'+d);if(!e)return;const o=e.style.display==='block';DAYS.forEach(x=>{const xe=document.getElementById('de-'+x),xa=document.getElementById('da-'+x);if(xe)xe.style.display='none';if(xa)xa.textContent='+';});if(!o){e.style.display='block';if(a)a.textContent='−';}}
-function logDay(d){S.outfitLog.unshift({id:Date.now(),date:todayStr(),context:d+' plan',mode:'work'});save();renderPlanLog();alert(`${d} outfit logged ✓`);}
+function logDay(d){S.outfitLog.unshift({id:Date.now(),date:todayStr(),context:d+' plan',mode:'work'});save();renderPlanLog();showNote('pnote',`${d} outfit logged to your history.`, 'success');}
 function renderPlanLog(){const s=document.getElementById('plog-sec'),c=document.getElementById('plog');if(!S.outfitLog.length){s.style.display='none';return;}s.style.display='block';c.innerHTML=S.outfitLog.slice(0,8).map(e=>`<div style="background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;color:var(--gold);font-weight:500;">${e.date}</span><span style="font-size:9px;color:var(--faint);">${e.context}</span></div>`).join('');}
 
 // ════════════════════════════════════════════════════════════
@@ -752,6 +884,7 @@ function updTypes(targetType){
 
 async function handleImg(input){
   const file=input.files[0];if(!file)return;
+  showNote('upload-note');
   const reader=new FileReader();
   reader.onload=async e=>{
     S.uploadPreview=e.target.result;
@@ -764,6 +897,12 @@ async function handleImg(input){
     if(!online){
       // Offline — save to queue, pre-fill name
       document.getElementById('iname').value='Photo item (to be analysed)';
+      showNote('upload-note','Offline. This photo will be queued and can be analysed later when you reconnect.','warn');
+      return;
+    }
+
+    if(!CFG.ai.enabled||!CFG.ai.endpoint){
+      showNote('upload-note',TXT.aiPhotoUnavailable,'warn');
       return;
     }
 
@@ -771,15 +910,13 @@ async function handleImg(input){
     document.getElementById('uao').style.display='flex';
     try{
       const b64=e.target.result.split(',')[1];
-      const r=await claude([{role:'user',content:[
+      const r=await fetchAI([{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
         {type:'text',text:'Analyse this garment or accessory carefully. Return ONLY valid JSON (no backticks, no markdown, no extra text): {"name":"descriptive name e.g. Navy Pinstripe Suit Coat","typeGroup":"must be exactly one of: Tops, Bottoms, Outerwear, Shoes, Accessories, Watches & Jewellery","type":"specific type e.g. Suit Coat, Oxford, Watch, Chinos","color":"dominant color as hex code e.g. #2c3e6e","pattern":"one of: solid, stripe, pinstripe, check, plaid, houndstooth, tweed, other","fit":"one of: slim, classic, regular, wide, relaxed, n/a","category":"one of: work, casual, both"}'}
       ]}],'You are a fashion expert. Return only valid JSON with no extra text. Be precise about typeGroup — it must exactly match one of the allowed values.');
 
       // Parse response
-      const s=r.indexOf('{'),en=r.lastIndexOf('}');
-      if(s===-1)throw new Error('No JSON in response');
-      const p=JSON.parse(r.slice(s,en+1));
+      const p=await safeJSONParse(r);
 
       // Apply autofill — ORDER MATTERS: group first, then type, then rest
       if(p.name) document.getElementById('iname').value=p.name;
@@ -808,9 +945,10 @@ async function handleImg(input){
         document.getElementById('icol').value=p.color;
         document.getElementById('chex').textContent=p.color;
       }
+      showNote('upload-note','Photo analysed. Review the details before adding it to your wardrobe.','success');
     }catch(err){
       console.error('AI autofill error:',err);
-      // Silently fail — user can fill in manually
+      showNote('upload-note','Could not analyse this photo automatically. You can still fill in the fields manually.','warn');
     }
     document.getElementById('uao').style.display='none';
   };
@@ -819,7 +957,7 @@ async function handleImg(input){
 
 function addFromUpload(){
   const name=document.getElementById('iname').value.trim();
-  if(!name){alert('Please enter a name for this item.');return;}
+  if(!name){showNote('upload-note','Please enter a name for this item.','error');return;}
   const id=Date.now();
   const isQueued=!online&&!!S.uploadPreview;
   const item={
@@ -844,6 +982,7 @@ function addFromUpload(){
   document.getElementById('icol').value='#1c1812';
   document.getElementById('chex').textContent='#1c1812';
   S.uploadPreview=null;
+  showNote('upload-note');
   const img=document.querySelector('#uz img.prev');if(img)img.remove();
   document.getElementById('uph').style.display='block';
   document.getElementById('finput').value='';
@@ -857,8 +996,12 @@ function updQueueBadge(){const n=S.photoQueue.length;document.getElementById('qc
 
 function renderQueue(){
   const list=document.getElementById('qlist'),empty=document.getElementById('qempty'),btn=document.getElementById('qproc');
+  if(!online&&S.photoQueue.length)showNote('qnote','Offline. Queued photos will stay here until you reconnect.','warn');
+  else if(!CFG.ai.enabled&&S.photoQueue.length)showNote('qnote',TXT.aiPhotoUnavailable,'warn');
+  else if(S.photoQueue.length)showNote('qnote');
+  else if(!S.photoQueue.length)showNote('qnote');
   if(!S.photoQueue.length){list.innerHTML='';empty.style.display='block';btn.style.display='none';return;}
-  empty.style.display='none';btn.style.display=online?'block':'none';
+  empty.style.display='none';btn.style.display=online&&CFG.ai.enabled?'block':'none';
   list.innerHTML=S.photoQueue.map(q=>`
     <div class="qi">
       ${q.image&&q.image.length>50?`<img src="${q.image}" style="width:44px;height:44px;border-radius:7px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;" alt=""/>`:`<div style="width:44px;height:44px;border-radius:7px;background:var(--linen);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📷</div>`}
@@ -870,34 +1013,44 @@ function rmQueue(id){S.photoQueue=S.photoQueue.filter(q=>q.id!==id);const item=S
 
 async function processQueue(){
   if(!online||!S.photoQueue.length)return;
+  if(!CFG.ai.enabled||!CFG.ai.endpoint){
+    showNote('qnote',TXT.aiPhotoUnavailable,'warn');
+    renderQueue();
+    return;
+  }
   const btn=document.getElementById('qproc');if(btn){btn.textContent='Analysing…';btn.disabled=true;}
+  showNote('qnote');
+  let failed=0,processed=0;
   for(const q of[...S.photoQueue]){
     if(!q.image||q.image.length<100)continue;
     try{
       const b64=q.image.split(',')[1];if(!b64)continue;
       const mt=q.image.match(/data:([^;]+);/)?.[1]||'image/jpeg';
-      const r=await claude([{role:'user',content:[
+      const r=await fetchAI([{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:mt,data:b64}},
         {type:'text',text:'Analyse this garment/accessory. Return ONLY valid JSON: {"name":"descriptive name","typeGroup":"Tops|Bottoms|Outerwear|Shoes|Accessories|Watches & Jewellery","type":"specific type","color":"dominant hex","pattern":"solid|stripe|pinstripe|check|plaid|houndstooth|tweed|other","fit":"slim|classic|regular|wide|relaxed|n/a","category":"work|casual|both"}'}
       ]}],'Return only valid JSON.');
-      const s=r.indexOf('{'),en=r.lastIndexOf('}');
-      if(s!==-1){
-        const p=JSON.parse(r.slice(s,en+1));
-        const item=S.wardrobe.find(i=>i.id===q.id);
-        if(item){Object.assign(item,p);item.queued=false;}
-      }
+      const p=await safeJSONParse(r);
+      const item=S.wardrobe.find(i=>i.id===q.id);
+      if(item){Object.assign(item,p);item.queued=false;}
       S.photoQueue=S.photoQueue.filter(x=>x.id!==q.id);
       try{localStorage.removeItem('vqi'+q.id);}catch(e){}
-    }catch(e){console.error(e);}
+      processed++;
+    }catch(e){
+      console.error(e);
+      failed++;
+    }
   }
   save();renderWardrobe();renderQueue();updQueueBadge();
+  if(processed&&!failed)showNote('qnote','Queued photos analysed successfully.','success');
+  if(failed)showNote('qnote',TXT.queueRetry,'warn');
   if(btn){btn.textContent='✦  Analyse All Now';btn.disabled=false;}
 }
 
 // ════════════════════════════════════════════════════════════
 // SMART FORM (fully offline)
 // ════════════════════════════════════════════════════════════
-function openSmartForm(){S.smartStep=0;S.smartAns={};openModal('smart');renderStep();}
+function openSmartForm(){S.smartStep=0;S.smartAns={};showNote('smart-note');openModal('smart');renderStep();}
 
 function renderStep(){
   const step=STEPS[S.smartStep];
@@ -927,9 +1080,10 @@ function selChip(v,el){document.querySelectorAll('#og .oc').forEach(c=>c.classLi
 function selCol(hex){document.querySelectorAll('[id^="cs"]').forEach(el=>el.style.border='2px solid var(--border)');const el=document.getElementById('cs'+hex.replace('#',''));if(el)el.style.border='2px solid var(--gold)';const cc=document.getElementById('ccustom');if(cc)cc.value=hex;S.smartAns.color=hex;}
 function stepNext(){
   const step=STEPS[S.smartStep];
-  if(step.type==='text'){const v=document.getElementById('stxt')?.value.trim()||'';if(!v){alert('Please enter a name.');return;}S.smartAns[step.id]=v;}
+  if(step.type==='text'){const v=document.getElementById('stxt')?.value.trim()||'';if(!v){showNote('smart-note','Please enter a name.','error');return;}S.smartAns[step.id]=v;}
   else if(step.type==='color'){if(!S.smartAns.color)S.smartAns.color='#1c1812';}
-  else{if(!S.smartAns[step.id]){alert('Please select an option.');return;}}
+  else{if(!S.smartAns[step.id]){showNote('smart-note','Please select an option.','error');return;}}
+  showNote('smart-note');
   if(S.smartStep<STEPS.length-1){S.smartStep++;renderStep();}
   else{
     const a=S.smartAns;
@@ -943,26 +1097,33 @@ function stepBack(){if(S.smartStep>0){S.smartStep--;renderStep();}}
 // GAPS & TRENDS
 // ════════════════════════════════════════════════════════════
 async function findGaps(){
-  if(!S.wardrobe.length){alert('Add some items first.');return;}
-  if(!online){alert('This feature needs internet.');return;}
+  if(!S.wardrobe.length){showNote('gnote','Add some items first.','warn');return;}
+  if(!online){showNote('gnote','This feature needs internet.','warn');return;}
+  if(!CFG.ai.enabled||!CFG.ai.endpoint){showNote('gnote',TXT.aiUnavailable,'warn');return;}
+  showNote('gnote');
   document.getElementById('gap-btn').disabled=true;document.getElementById('gspin').style.display='block';document.getElementById('gout').style.display='none';
   try{
-    const r=await claude([{role:'user',content:`Wardrobe: ${S.wardrobe.map(i=>`${i.name}(${i.typeGroup})`).join(', ')}.\nOccasions: ${[...WC,...CC].join(', ')}.\nIdentify 5 most important missing pieces. Be very specific (e.g. "a mid-grey herringbone blazer"). Explain why each matters and how it pairs with existing items.`}],
+    const r=await fetchAI([{role:'user',content:`Wardrobe: ${S.wardrobe.map(i=>`${i.name}(${i.typeGroup})`).join(', ')}.\nOccasions: ${[...WC,...CC].join(', ')}.\nIdentify 5 most important missing pieces. Be very specific (e.g. "a mid-grey herringbone blazer"). Explain why each matters and how it pairs with existing items.`}],
       'Personal stylist. Specific, actionable wardrobe gap analysis.',true);
     document.getElementById('gout').innerHTML=rAI(r);document.getElementById('gout').style.display='block';
-  }catch(e){document.getElementById('gout').innerHTML='<p class="ap" style="color:var(--red);">Error — check connection.</p>';document.getElementById('gout').style.display='block';}
+    showNote('gnote','Gap analysis is ready.','success');
+  }catch(e){document.getElementById('gout').innerHTML='<p class="ap" style="color:var(--red);">Gap analysis is unavailable right now.</p>';document.getElementById('gout').style.display='block';showNote('gnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not analyse your wardrobe gaps right now.','error');}
   document.getElementById('gspin').style.display='none';document.getElementById('gap-btn').disabled=false;
 }
 
 async function fetchTrends(){
-  if(!online){alert('This feature needs internet.');return;}
-  document.getElementById('trend-btn').style.display='none';document.getElementById('tspin').style.display='block';document.getElementById('tout').style.display='none';
+  if(!online){showNote('tnote','This feature needs internet.','warn');return;}
+  if(!CFG.ai.enabled||!CFG.ai.endpoint){showNote('tnote',TXT.aiUnavailable,'warn');return;}
+  showNote('tnote');
+  setBtnBusy('trend-btn',true,'Searching…');document.getElementById('tspin').style.display='block';document.getElementById('tout').style.display='none';
   try{
-    const r=await claude([{role:'user',content:"Search for latest men's fashion trends SS 2026. Cover silhouettes, colours, suiting, separates styling. Focus on quiet luxury, old money aesthetic. 5 key actionable trends for a refined wardrobe."}],
+    const r=await fetchAI([{role:'user',content:"Search for latest men's fashion trends SS 2026. Cover silhouettes, colours, suiting, separates styling. Focus on quiet luxury, old money aesthetic. 5 key actionable trends for a refined wardrobe."}],
       'Fashion editor covering refined menswear. Use web search for current 2026 trends.',true);
     document.getElementById('tout').innerHTML=rAI(r);document.getElementById('tout').style.display='block';
-  }catch(e){document.getElementById('tout').innerHTML='<p class="ap" style="color:var(--red);">Error — check connection.</p>';document.getElementById('tout').style.display='block';}
+    showNote('tnote','Trend report refreshed.','success');
+  }catch(e){document.getElementById('tout').innerHTML='<p class="ap" style="color:var(--red);">Trend search is unavailable right now.</p>';document.getElementById('tout').style.display='block';showNote('tnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not refresh trends right now.','error');}
   document.getElementById('tspin').style.display='none';
+  setBtnBusy('trend-btn',false);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -979,7 +1140,7 @@ function showScreen(name,btn){
 }
 function openModal(n){document.getElementById('modal-'+n).classList.add('open');if(n==='queue')renderQueue();}
 function closeModal(n){document.getElementById('modal-'+n).classList.remove('open');}
-function openUploadModal(){updTypes();openModal('upload');}
+function openUploadModal(){updTypes();showNote('upload-note',!online?'Offline. Photos added now will be queued automatically.':(!CFG.ai.enabled?TXT.aiPhotoUnavailable:''),!online?'warn':'warn');openModal('upload');}
 
 // ════════════════════════════════════════════════════════════
 // INIT
@@ -990,20 +1151,21 @@ function init(){
   renderOcc();
   document.getElementById('city-label').textContent=S.city||'Set City';
   updQueueBadge();updTypes();
+  if(!CFG.ai.enabled)showNote('mnote',TXT.aiUnavailable,'warn');
 
   // Show cached plan offline on morning screen
   if(!online&&S.weekPlanText){
+    showNote('mnote','Offline. Showing your cached plan below.','warn');
     document.getElementById('mout').innerHTML='<div style="font-size:9px;color:var(--faint);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;">Offline · Cached Plan</div>'+rAI(S.weekPlanText);
     document.getElementById('mout').style.display='block';
   }
 
   // Location: try IP-based first (silent, no permission), then fall back
   if(!S.city){
-    fetch('https://ipapi.co/json/')
-      .then(r=>r.json())
+    fetchJSON('https://ipapi.co/json/')
       .then(d=>{
         if(d.city&&d.city!=='undefined'){
-          S.city=d.city;S.lat=d.latitude;S.lon=d.longitude;
+          S.city=d.city;S.lat=parseFloat(d.latitude)||null;S.lon=parseFloat(d.longitude)||null;
           document.getElementById('city-label').textContent=S.city;
           save();
         }
@@ -1014,6 +1176,7 @@ function init(){
     loadWeather();
   }
 
+  renderPlanDays();
   // Auto-generate weekly plan in background if stale
   setTimeout(maybeAutoPlan,3500);
 }
