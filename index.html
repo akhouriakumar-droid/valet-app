@@ -164,7 +164,7 @@ input:focus,select:focus{outline:none;}
   </div>
 </div>
 
-<div class="update-stamp">Last updated: 22 Apr 2026, 16:57 CEST</div>
+<div class="update-stamp">Last updated: 22 Apr 2026, 17:31 CEST</div>
 
 <div id="content">
 
@@ -1168,10 +1168,45 @@ function stepBack(){if(S.smartStep>0){S.smartStep--;renderStep();}}
 // ════════════════════════════════════════════════════════════
 // GAPS & TRENDS
 // ════════════════════════════════════════════════════════════
+function hasItem(matchers){
+  return S.wardrobe.some(i=>{
+    const text=`${i.name} ${i.typeGroup} ${i.type} ${i.pattern} ${i.category}`.toLowerCase();
+    return matchers.some(m=>text.includes(m));
+  });
+}
+
+function pairText(){
+  const picks=S.wardrobe.slice(0,4).map(i=>i.name);
+  return picks.length?`Pairs immediately with ${picks.join(', ')}.`:'Start here, then build around it with shirts, shoes, and outerwear.';
+}
+
+function localGapReport(){
+  const ideas=[
+    {need:['suit'],title:'1. A versatile navy or charcoal suit',why:'A full suit gives the wardrobe a reliable formal anchor for meetings, presentations, dinners, and events.',pair:pairText()},
+    {need:['blazer','suit coat'],title:'2. A mid-grey or navy textured blazer',why:'This unlocks smart-casual combinations and makes trousers, chinos, shirts, and knitwear feel more intentional.',pair:pairText()},
+    {need:['oxford','derby','loafer'],title:'3. A polished leather shoe',why:'Refined outfits often fail at the footwear step; one elegant black or dark-brown pair raises almost every work look.',pair:pairText()},
+    {need:['overcoat','trench coat'],title:'4. A proper outer layer',why:'A wool overcoat or trench makes tailored outfits look complete outdoors and protects the silhouette in cooler or wet weather.',pair:pairText()},
+    {need:['shirt'],title:'5. Two crisp shirts in white and pale blue',why:'They are the highest-rotation base layers for suits, blazers, knitwear, and business-casual outfits.',pair:pairText()},
+    {need:['chinos','suit trousers'],title:'6. Tailored neutral trousers',why:'Grey, navy, or stone trousers multiply the number of separates combinations without needing another suit.',pair:pairText()},
+    {need:['tie','pocket square','belt'],title:'7. Quiet finishing accessories',why:'A belt, tie, and pocket square let the same core outfit read more formal or more relaxed depending on the occasion.',pair:pairText()}
+  ];
+  const missing=ideas.filter(i=>!hasItem(i.need)).slice(0,5);
+  const selected=missing.length?missing:ideas.slice(1,6);
+  return `**Built-in Gap Analysis**\n\n${selected.map(i=>`${i.title}\n${i.why} ${i.pair}`).join('\n\n')}\n\n**Priority Principle**\nBuy the piece that completes the most outfits first: usually shoes, outerwear, then a suit or blazer.`;
+}
+
+function localTrendReport(){
+  return `**Built-in Menswear Trend Guide**\n\n1. Relaxed Tailoring\nSofter shoulders, fuller trousers, and less rigid suiting are the most wearable direction. Use: suits, blazers, pleated trousers, fine knitwear. Avoid: oversized jackets that look borrowed.\n\n2. Tonal Neutrals With Texture\nNavy, charcoal, grey, olive, cream, and tobacco work best when texture carries the interest. Use: wool, linen, suede, herringbone, knit polos. Avoid: flat one-colour outfits with no contrast.\n\n3. Separates Over Matching Everything\nSuit jackets, trousers, shirts, and loafers should mix cleanly rather than always matching. Use: navy jacket with grey trousers, brown loafers, pale blue shirt. Avoid: clashing patterns at the same scale.\n\n4. Polished Casual Footwear\nLoafers, derbies, Chelsea boots, and minimal sneakers keep casual outfits adult. Use: one dark leather pair and one lighter relaxed pair. Avoid: athletic shoes with tailored outfits unless the whole look is intentionally casual.\n\n5. Fewer, Better Accessories\nQuiet belts, watches, pocket squares, scarves, and bags are doing more than loud logos. Use: one good belt, one good watch, one seasonal scarf. Avoid: over-accessorising.\n\n**Longevity Read**\nThe durable parts are relaxed tailoring, quality leather footwear, textured neutrals, and restrained accessories. Treat louder colours or extreme silhouettes as optional accents.`;
+}
+
 async function findGaps(){
   if(!S.wardrobe.length){showNote('gnote','Add some items first.','warn');return;}
-  if(!online){showNote('gnote','This feature needs internet.','warn');return;}
-  if(!CFG.ai.enabled||!CFG.ai.endpoint){showNote('gnote',TXT.aiUnavailable,'warn');return;}
+  if(!online||!CFG.ai.enabled||!CFG.ai.endpoint){
+    document.getElementById('gout').innerHTML=rAI(localGapReport());
+    document.getElementById('gout').style.display='block';
+    showNote('gnote','Showing built-in gap analysis. Configure AI later for personalised live analysis.','success');
+    return;
+  }
   showNote('gnote');
   document.getElementById('gap-btn').disabled=true;document.getElementById('gspin').style.display='block';document.getElementById('gout').style.display='none';
   try{
@@ -1185,8 +1220,12 @@ async function findGaps(){
 }
 
 async function fetchTrends(){
-  if(!online){showNote('tnote','This feature needs internet.','warn');return;}
-  if(!CFG.ai.enabled||!CFG.ai.endpoint){showNote('tnote',TXT.aiUnavailable,'warn');return;}
+  if(!online||!CFG.ai.enabled||!CFG.ai.endpoint){
+    document.getElementById('tout').innerHTML=rAI(localTrendReport());
+    document.getElementById('tout').style.display='block';
+    showNote('tnote','Showing built-in trend guide. Configure AI later for live web trends.','success');
+    return;
+  }
   showNote('tnote');
   setBtnBusy('trend-btn',true,'Searching…');document.getElementById('tspin').style.display='block';document.getElementById('tout').style.display='none';
   try{
