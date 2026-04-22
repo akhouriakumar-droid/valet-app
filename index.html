@@ -66,6 +66,7 @@ input:focus,select:focus{outline:none;}
 .header-right{display:flex;align-items:center;gap:8px;}
 .online-dot{width:7px;height:7px;border-radius:50%;background:var(--faintest);transition:background 0.4s;flex-shrink:0;}
 .online-dot.on{background:#4a8a5a;}.online-dot.off{background:#c4a030;}
+.update-stamp{background:var(--gold-f);border-bottom:1px solid var(--border);padding:5px 18px;font-size:9px;color:var(--gold);letter-spacing:0.12em;text-transform:uppercase;text-align:center;flex-shrink:0;}
 .city-pill{display:flex;align-items:center;gap:5px;background:var(--gold-f);border:1px solid var(--border);border-radius:20px;padding:5px 10px;cursor:pointer;}
 .city-pill span{font-size:11px;color:var(--ink-l);}
 #queue-btn{display:none;background:var(--gold-f);color:var(--gold);border:1px solid var(--border);border-radius:20px;padding:5px 10px;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:0.05em;}
@@ -162,6 +163,8 @@ input:focus,select:focus{outline:none;}
     <div class="city-pill" onclick="openCityModal()"><span>📍</span><span id="city-label">Locating…</span></div>
   </div>
 </div>
+
+<div class="update-stamp">Last updated: 22 Apr 2026, 16:57 CEST</div>
 
 <div id="content">
 
@@ -298,9 +301,9 @@ input:focus,select:focus{outline:none;}
     </div>
     <input type="file" id="finput" accept="image/*" capture="environment" style="display:none;" onchange="handleImg(this)"/>
     <div id="upload-note" class="status-note"></div>
-    <div style="margin-bottom:12px;"><div class="fl">Name <span style="color:var(--faintest);font-size:9px;">(auto-filled by AI)</span></div><input id="iname" class="fi" placeholder="e.g. Navy Suit Coat"/></div>
+    <div style="margin-bottom:12px;"><div class="fl">Name <span style="color:var(--faintest);font-size:9px;">(auto-filled by AI)</span></div><input id="iname" class="fi" placeholder="e.g. Navy Pinstripe Suit"/></div>
     <div class="g2" style="margin-bottom:12px;">
-      <div><div class="fl">Group</div><select id="igroup" class="fs" onchange="updTypes()"><option>Tops</option><option>Bottoms</option><option>Outerwear</option><option>Shoes</option><option>Accessories</option><option>Watches &amp; Jewellery</option></select></div>
+      <div><div class="fl">Group</div><select id="igroup" class="fs" onchange="updTypes()"><option>Suits</option><option>Tops</option><option>Bottoms</option><option>Outerwear</option><option>Shoes</option><option>Accessories</option><option>Watches &amp; Jewellery</option></select></div>
       <div><div class="fl">Type</div><select id="itype" class="fs"></select></div>
       <div><div class="fl">Context</div><select id="icat" class="fs"><option value="work">Work</option><option value="casual">Casual</option><option value="both">Both</option></select></div>
       <div><div class="fl">Fit</div><select id="ifit" class="fs"><option>slim</option><option>classic</option><option selected>regular</option><option>wide</option><option>relaxed</option><option>n/a</option></select></div>
@@ -355,6 +358,7 @@ const CC=['Weekend','Date Night','Brunch','Travel','Evening Out','Smart Casual']
 const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const WI={sunny:'☀️',cloudy:'⛅',rainy:'🌧️',cold:'❄️',warm:'🌤️',windy:'🌬️'};
 const IG={
+  'Suits':['Suit','Tuxedo','Dinner Suit'],
   'Tops':['Suit Coat','Blazer','Shirt','Polo','T-Shirt','Sweater','Turtleneck','Waistcoat'],
   'Bottoms':['Suit Trousers','Chinos','Jeans','Shorts'],
   'Outerwear':['Overcoat','Trench Coat','Puffer','Jacket'],
@@ -370,7 +374,7 @@ const STEPS=[
   {id:'fit',label:'How does it fit?',opts:['Slim','Classic','Regular','Wide','Relaxed','N/A'],map:{Slim:'slim',Classic:'classic',Regular:'regular',Wide:'wide',Relaxed:'relaxed','N/A':'n/a'}},
   {id:'pattern',label:'Pattern?',opts:['Solid','Stripe','Pinstripe','Check','Plaid','Houndstooth','Tweed','Other'],map:{Solid:'solid',Stripe:'stripe',Pinstripe:'pinstripe',Check:'check',Plaid:'plaid',Houndstooth:'houndstooth',Tweed:'tweed',Other:'other'}},
   {id:'color',label:'Primary colour?',type:'color'},
-  {id:'name',label:'Give it a name',type:'text',ph:'e.g. Navy Pinstripe Suit Coat'},
+  {id:'name',label:'Give it a name',type:'text',ph:'e.g. Navy Pinstripe Suit'},
 ];
 
 // ════════════════════════════════════════════════════════════
@@ -452,6 +456,7 @@ window.addEventListener('offline',updOnline);
 // ════════════════════════════════════════════════════════════
 const todayStr=()=>new Date().toISOString().split('T')[0];
 const todayFull=()=>new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+const todayLong=()=>new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 const dayShort=()=>new Date().toLocaleDateString('en-GB',{weekday:'short'});
 const daysSince=d=>{if(!d?.length)return null;const l=new Date(Math.max(...d.map(x=>new Date(x))));return Math.floor((Date.now()-l)/86400000);};
 const fc=d=>d===null?'#9a7c4a':d>14?'#2a5a3a':d>7?'#c4a96e':'#8a3a2a';
@@ -522,6 +527,70 @@ async function safeJSONParse(raw){
   const s=raw.indexOf('{'),e=raw.lastIndexOf('}');
   if(s===-1||e===-1||e<s)throw new Error('INVALID_JSON');
   return JSON.parse(raw.slice(s,e+1));
+}
+
+function normalizeAIItem(raw={}){
+  const item={...raw};
+  const text=[item.name,item.typeGroup,item.type].filter(Boolean).join(' ').toLowerCase();
+  const nameText=String(item.name||'').toLowerCase();
+  const cleanType=String(item.type||'').toLowerCase().replace(/[_-]/g,' ').replace(/\s+/g,' ').trim();
+  const fullSuitHint=/\b(tuxedo|dinner suit|two piece|2 piece|three piece|3 piece|full suit|matching suit)\b/.test(text)
+    || (/\bsuit\b/.test(nameText)&&!/suit\s+(coat|jacket|trouser|trousers|pants)/.test(nameText)&&/coat\s*\/\s*blazer|blazer\s*\/\s*coat/.test(cleanType));
+
+  if(!IG[item.typeGroup]){
+    item.typeGroup='';
+    for(const [group,types] of Object.entries(IG)){
+      if(types.some(t=>cleanType===t.toLowerCase()||text.includes(t.toLowerCase()))){item.typeGroup=group;break;}
+    }
+  }
+
+  if(fullSuitHint)item.typeGroup='Suits';
+
+  if(!item.typeGroup){
+    if(/\b(tuxedo|dinner suit|two piece|2 piece|three piece|3 piece|full suit|matching suit|suit)\b/.test(text))item.typeGroup='Suits';
+    else if(/\b(trouser|pants|chinos|jeans|shorts)\b/.test(text))item.typeGroup='Bottoms';
+    else if(/\b(overcoat|trench|puffer|outerwear)\b/.test(text))item.typeGroup='Outerwear';
+    else if(/\b(oxford|derby|loafer|boot|sneaker|shoe)\b/.test(text))item.typeGroup='Shoes';
+    else if(/\b(watch|ring|bracelet|necklace|cufflink|lapel)\b/.test(text))item.typeGroup='Watches & Jewellery';
+    else if(/\b(belt|tie|pocket square|scarf|bag)\b/.test(text))item.typeGroup='Accessories';
+    else item.typeGroup='Tops';
+  }
+
+  const aliases=[
+    [/dinner suit|black tie/, 'Dinner Suit'],
+    [/tuxedo/, 'Tuxedo'],
+    [/full suit|matching suit|two piece|2 piece|three piece|3 piece/, 'Suit'],
+    [/suit jacket|suit coat|coat\s*\/\s*blazer|blazer\s*\/\s*coat|sports coat|sport coat/, 'Suit Coat'],
+    [/suit trouser|dress trouser|formal trouser/, 'Suit Trousers'],
+    [/\bsuit\b/, 'Suit'],
+    [/\bblazer\b/, 'Blazer'],
+    [/overcoat/, 'Overcoat'],
+    [/trench/, 'Trench Coat'],
+    [/puffer/, 'Puffer'],
+    [/\bjacket\b/, 'Jacket']
+  ];
+
+  for(const [rx,type] of aliases){
+    if(rx.test(text)){item.type=type;break;}
+  }
+  if(fullSuitHint&&!/\b(tuxedo|dinner suit|black tie)\b/.test(text))item.type='Suit';
+
+  if(IG.Suits.includes(item.type))item.typeGroup='Suits';
+
+  const allowed=IG[item.typeGroup]||[];
+  if(!allowed.includes(item.type)){
+    const match=allowed.find(t=>cleanType===t.toLowerCase()||cleanType.includes(t.toLowerCase())||t.toLowerCase().includes(cleanType));
+    item.type=match||allowed[0]||'Item';
+  }
+
+  if(item.typeGroup==='Suits'&&item.type==='Suit'&&!/\bsuit\b/i.test(item.name||'')){
+    item.name=[item.name,'Suit'].filter(Boolean).join(' ');
+  }
+  item.category=['work','casual','both'].includes(item.category)?item.category:'work';
+  item.fit=['slim','classic','regular','wide','relaxed','n/a'].includes(item.fit)?item.fit:'regular';
+  item.pattern=['solid','stripe','pinstripe','check','plaid','houndstooth','tweed','other'].includes(item.pattern)?item.pattern:'solid';
+  item.color=/^#[0-9a-f]{6}$/i.test(item.color||'')?item.color:'#1c1812';
+  return item;
 }
 
 function setWeatherState(msg,tone='warn'){
@@ -915,11 +984,11 @@ async function handleImg(input){
       const b64=e.target.result.split(',')[1];
       const r=await fetchAI([{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
-        {type:'text',text:'Analyse this garment or accessory carefully. Return ONLY valid JSON (no backticks, no markdown, no extra text): {"name":"descriptive name e.g. Navy Pinstripe Suit Coat","typeGroup":"must be exactly one of: Tops, Bottoms, Outerwear, Shoes, Accessories, Watches & Jewellery","type":"specific type e.g. Suit Coat, Oxford, Watch, Chinos","color":"dominant color as hex code e.g. #2c3e6e","pattern":"one of: solid, stripe, pinstripe, check, plaid, houndstooth, tweed, other","fit":"one of: slim, classic, regular, wide, relaxed, n/a","category":"one of: work, casual, both"}'}
-      ]}],'You are a fashion expert. Return only valid JSON with no extra text. Be precise about typeGroup — it must exactly match one of the allowed values.');
+        {type:'text',text:'Analyse this menswear garment or accessory carefully. If the photo shows a matching jacket and trousers together, classify it as typeGroup "Suits" and type "Suit" instead of Coat, Blazer, or Suit Coat. Return ONLY valid JSON (no backticks, no markdown, no extra text): {"name":"descriptive name e.g. Navy Pinstripe Suit","typeGroup":"must be exactly one of: Suits, Tops, Bottoms, Outerwear, Shoes, Accessories, Watches & Jewellery","type":"specific type. Suits: Suit, Tuxedo, Dinner Suit. Tops: Suit Coat, Blazer, Shirt, Polo, T-Shirt, Sweater, Turtleneck, Waistcoat. Bottoms: Suit Trousers, Chinos, Jeans, Shorts. Outerwear: Overcoat, Trench Coat, Puffer, Jacket. Shoes: Oxford, Derby, Loafer, Chelsea Boot, Sneaker, Boot. Accessories: Belt, Tie, Pocket Square, Scarf, Bag. Watches & Jewellery: Watch, Ring, Bracelet, Necklace, Cufflinks, Lapel Pin","color":"dominant color as hex code e.g. #2c3e6e","pattern":"one of: solid, stripe, pinstripe, check, plaid, houndstooth, tweed, other","fit":"one of: slim, classic, regular, wide, relaxed, n/a","category":"one of: work, casual, both"}'}
+      ]}],'You are a fashion expert. Return only valid JSON with no extra text. Be precise about typeGroup and type. Allowed typeGroups: Suits, Tops, Bottoms, Outerwear, Shoes, Accessories, Watches & Jewellery.');
 
       // Parse response
-      const p=await safeJSONParse(r);
+      const p=normalizeAIItem(await safeJSONParse(r));
 
       // Apply autofill — ORDER MATTERS: group first, then type, then rest
       if(p.name) document.getElementById('iname').value=p.name;
@@ -1031,9 +1100,9 @@ async function processQueue(){
       const mt=q.image.match(/data:([^;]+);/)?.[1]||'image/jpeg';
       const r=await fetchAI([{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:mt,data:b64}},
-        {type:'text',text:'Analyse this garment/accessory. Return ONLY valid JSON: {"name":"descriptive name","typeGroup":"Tops|Bottoms|Outerwear|Shoes|Accessories|Watches & Jewellery","type":"specific type","color":"dominant hex","pattern":"solid|stripe|pinstripe|check|plaid|houndstooth|tweed|other","fit":"slim|classic|regular|wide|relaxed|n/a","category":"work|casual|both"}'}
-      ]}],'Return only valid JSON.');
-      const p=await safeJSONParse(r);
+        {type:'text',text:'Analyse this menswear garment/accessory. If the photo shows a matching jacket and trousers together, classify it as typeGroup "Suits" and type "Suit". Return ONLY valid JSON: {"name":"descriptive name","typeGroup":"Suits|Tops|Bottoms|Outerwear|Shoes|Accessories|Watches & Jewellery","type":"specific type","color":"dominant hex","pattern":"solid|stripe|pinstripe|check|plaid|houndstooth|tweed|other","fit":"slim|classic|regular|wide|relaxed|n/a","category":"work|casual|both"}'}
+      ]}],'Return only valid JSON. Allowed typeGroups: Suits, Tops, Bottoms, Outerwear, Shoes, Accessories, Watches & Jewellery.');
+      const p=normalizeAIItem(await safeJSONParse(r));
       const item=S.wardrobe.find(i=>i.id===q.id);
       if(item){Object.assign(item,p);item.queued=false;}
       S.photoQueue=S.photoQueue.filter(x=>x.id!==q.id);
@@ -1106,8 +1175,9 @@ async function findGaps(){
   showNote('gnote');
   document.getElementById('gap-btn').disabled=true;document.getElementById('gspin').style.display='block';document.getElementById('gout').style.display='none';
   try{
-    const r=await fetchAI([{role:'user',content:`Wardrobe: ${S.wardrobe.map(i=>`${i.name}(${i.typeGroup})`).join(', ')}.\nOccasions: ${[...WC,...CC].join(', ')}.\nIdentify 5 most important missing pieces. Be very specific (e.g. "a mid-grey herringbone blazer"). Explain why each matters and how it pairs with existing items.`}],
-      'Personal stylist. Specific, actionable wardrobe gap analysis.',true);
+    const wardrobe=S.wardrobe.map(i=>`- ${i.name}: ${i.typeGroup}/${i.type}, ${i.color}, ${i.pattern}, ${i.fit} fit, ${i.category}, worn ${i.wornDates?.length||0} times`).join('\n');
+    const r=await fetchAI([{role:'user',content:`Today is ${todayLong()}.\nWardrobe:\n${wardrobe}\n\nOccasions: ${[...WC,...CC].join(', ')}.\nIdentify the 5 most important missing pieces for a refined menswear wardrobe. Account for full suits, suit separates, shoes, outerwear, accessories, colour balance, and occasion coverage. Be specific (e.g. "a mid-grey herringbone blazer"), avoid recommending duplicates, and explain exactly which existing items each gap would pair with.`}],
+      'Personal stylist. Specific, actionable wardrobe gap analysis. Prioritise high-utility purchases, not generic trend filler.',true);
     document.getElementById('gout').innerHTML=rAI(r);document.getElementById('gout').style.display='block';
     showNote('gnote','Gap analysis is ready.','success');
   }catch(e){document.getElementById('gout').innerHTML='<p class="ap" style="color:var(--red);">Gap analysis is unavailable right now.</p>';document.getElementById('gout').style.display='block';showNote('gnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not analyse your wardrobe gaps right now.','error');}
@@ -1120,8 +1190,8 @@ async function fetchTrends(){
   showNote('tnote');
   setBtnBusy('trend-btn',true,'Searching…');document.getElementById('tspin').style.display='block';document.getElementById('tout').style.display='none';
   try{
-    const r=await fetchAI([{role:'user',content:"Search for latest men's fashion trends SS 2026. Cover silhouettes, colours, suiting, separates styling. Focus on quiet luxury, old money aesthetic. 5 key actionable trends for a refined wardrobe."}],
-      'Fashion editor covering refined menswear. Use web search for current 2026 trends.',true);
+    const r=await fetchAI([{role:'user',content:`Today is ${todayLong()}. Search the web for current men's fashion trends for this season. Cover silhouettes, colours, suiting, separates styling, footwear, and accessories. Focus on refined menswear, quiet luxury, and old-money-adjacent dressing without making it costume-like. Give 5 actionable trends, each with: trend name, what to buy/use from an existing wardrobe, what to avoid, and how long-lived it is likely to be.`}],
+      'Fashion editor covering refined menswear. Use current web search when available; avoid stale trend roundups and clearly favour wearable, durable guidance.',true);
     document.getElementById('tout').innerHTML=rAI(r);document.getElementById('tout').style.display='block';
     showNote('tnote','Trend report refreshed.','success');
   }catch(e){document.getElementById('tout').innerHTML='<p class="ap" style="color:var(--red);">Trend search is unavailable right now.</p>';document.getElementById('tout').style.display='block';showNote('tnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not refresh trends right now.','error');}
