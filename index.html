@@ -420,7 +420,7 @@ const CFG={
     enabled:true,
     endpoint:'https://api.openai.com/v1/chat/completions',
     model:'gpt-4o',
-    key:'' // Set your OpenAI API key here
+    key:'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'
   },
   networkTimeoutMs:9000
 };
@@ -555,6 +555,7 @@ async function fetchJSON(url,{timeout=CFG.networkTimeoutMs,headers={},...opts}={
 
 async function fetchAI(msgs,sys='',search=false){
   if(!CFG.ai.enabled||!CFG.ai.endpoint)throw new Error('AI_UNAVAILABLE');
+  if(!CFG.ai.key)throw new Error('AI_KEY_MISSING');
   const headers={'Content-Type':'application/json'};
   if(CFG.ai.key)headers['Authorization']='Bearer '+CFG.ai.key;
   const body={model:CFG.ai.model,messages:[{role:'system',content:sys},...msgs.map(m=>({role:'user',content:m.content}))]};
@@ -840,7 +841,7 @@ async function generateMorning(){
   }catch(e){
     document.getElementById('mout').innerHTML='<p class="ap" style="color:var(--red);">Styling recommendations are unavailable right now.</p>';
     document.getElementById('mout').style.display='block';
-    showNote('mnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not generate outfits right now. Please retry shortly.','error');
+    showNote('mnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:e.message==='AI_KEY_MISSING'?'AI is enabled but no API key is set. Please configure CFG.ai.key with your OpenAI API key.':'Could not generate outfits right now. Please retry shortly.','error');
   }
   document.getElementById('mspin').style.display='none';
   setBtnBusy('gen-btn',false);
@@ -878,7 +879,7 @@ async function suggestComplementary(){
   }catch(e){
     document.getElementById('sout').innerHTML='<p class="ap" style="color:var(--red);">Suggestions are unavailable right now.</p>';
     document.getElementById('sout').style.display='block';
-    showNote('snote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not generate suggestions right now. Please retry shortly.','error');
+    showNote('snote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:e.message==='AI_KEY_MISSING'?'AI is enabled but no API key is set. Please configure CFG.ai.key with your OpenAI API key.':'Could not generate suggestions right now. Please retry shortly.','error');
   }
   document.getElementById('sspin').style.display='none';
   setBtnBusy('suggest-btn',false);
@@ -1348,7 +1349,7 @@ async function findGaps(){
       'Personal stylist specialising in refined menswear. Draw from Japanese principles of quality and minimalism, 60-30-10 color harmony, old money classics, luxury brand craftsmanship, and 2026 trends. Specific, actionable wardrobe gap analysis. Prioritise high-utility purchases.',true);
     document.getElementById('gout').innerHTML=rAI(r);document.getElementById('gout').style.display='block';
     showNote('gnote','Gap analysis is ready.','success');
-  }catch(e){document.getElementById('gout').innerHTML='<p class="ap" style="color:var(--red);">Gap analysis is unavailable right now.</p>';document.getElementById('gout').style.display='block';showNote('gnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not analyse your wardrobe gaps right now.','error');}
+  }catch(e){document.getElementById('gout').innerHTML='<p class="ap" style="color:var(--red);">Gap analysis is unavailable right now.</p>';document.getElementById('gout').style.display='block';showNote('gnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:e.message==='AI_KEY_MISSING'?'AI is enabled but no API key is set. Please configure CFG.ai.key with your OpenAI API key.':'Could not analyse your wardrobe gaps right now.','error');}
   document.getElementById('gspin').style.display='none';document.getElementById('gap-btn').disabled=false;
 }
 
@@ -1366,7 +1367,7 @@ async function fetchTrends(){
       'Fashion editor covering refined menswear. Draw from Japanese styling minimalism, 60-30-10 rule, old money aesthetics, luxury brand philosophies, and emerging 2026 trends like sustainable fabrics and versatile silhouettes. Use current web search when available; avoid stale trend roundups and clearly favour wearable, durable guidance.',true);
     document.getElementById('tout').innerHTML=rAI(r);document.getElementById('tout').style.display='block';
     showNote('tnote','Trend report refreshed.','success');
-  }catch(e){document.getElementById('tout').innerHTML='<p class="ap" style="color:var(--red);">Trend search is unavailable right now.</p>';document.getElementById('tout').style.display='block';showNote('tnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not refresh trends right now.','error');}
+  }catch(e){document.getElementById('tout').innerHTML='<p class="ap" style="color:var(--red);">Trend search is unavailable right now.</p>';document.getElementById('tout').style.display='block';showNote('tnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:e.message==='AI_KEY_MISSING'?'AI is enabled but no API key is set. Please configure CFG.ai.key with your OpenAI API key.':'Could not refresh trends right now.','error');}
   document.getElementById('tspin').style.display='none';
   setBtnBusy('trend-btn',false);
 }
