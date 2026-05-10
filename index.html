@@ -349,6 +349,7 @@ input:focus,select:focus{outline:none;}
 <div class="mo" id="modal-item" onclick="if(event.target===this)closeModal('item')">
   <div class="ms"><div class="mh"></div><div id="idet"></div></div>
 </div>
+<input type="file" id="item-photo-input" accept="image/*" capture="environment" style="display:none;" onchange="handleItemPhoto(this)"/>
 
 <script>
 // ════════════════════════════════════════════════════════════
@@ -378,6 +379,20 @@ const STEPS=[
   {id:'name',label:'Give it a name',type:'text',ph:'e.g. Navy Pinstripe Suit'},
 ];
 
+const STARTER_WARDROBE=[
+  {id:'seed-bonsoir-black-suit',name:'Bonsoir Black Suit',typeGroup:'Suits',type:'Suit',category:'work',fit:'regular',pattern:'solid',color:'#161512',image:null,wornDates:[],queued:false,brand:'Bonsoir Essentials',detectionHints:['black two-piece suit','black suit jacket and trousers','dark formal suit']},
+  {id:'seed-jackjones-forest-suit',name:'Jack & Jones Forest Green Suit',typeGroup:'Suits',type:'Suit',category:'both',fit:'slim',pattern:'solid',color:'#102a23',image:null,wornDates:[],queued:false,brand:'Jack & Jones',detectionHints:['dark green two-piece suit','forest green suit','green jacket and trousers']},
+  {id:'seed-selected-burgundy-suit',name:'Selected Homme Burgundy Suit',typeGroup:'Suits',type:'Suit',category:'both',fit:'slim',pattern:'solid',color:'#7b2028',image:null,wornDates:[],queued:false,brand:'Selected Homme',detectionHints:['burgundy two-piece suit','wine red suit','red suit jacket and trousers']},
+  {id:'seed-bonsoir-charcoal-suit',name:'Bonsoir Charcoal Suit',typeGroup:'Suits',type:'Suit',category:'work',fit:'regular',pattern:'solid',color:'#2f302d',image:null,wornDates:[],queued:false,brand:'Bonsoir Essentials',detectionHints:['charcoal suit','dark grey two-piece suit','grey lining suit']},
+  {id:'seed-bonsoir-cognac-suit',name:'Bonsoir Cognac Brown Suit',typeGroup:'Suits',type:'Suit',category:'both',fit:'regular',pattern:'solid',color:'#8a512f',image:null,wornDates:[],queued:false,brand:'Bonsoir Essentials',detectionHints:['cognac brown suit','tobacco brown two-piece suit','brown suit with navy lining']},
+  {id:'seed-jackjones-navy-suit',name:'Jack & Jones Navy Suit',typeGroup:'Suits',type:'Suit',category:'work',fit:'slim',pattern:'solid',color:'#182335',image:null,wornDates:[],queued:false,brand:'Jack & Jones',detectionHints:['navy two-piece suit','dark blue suit','super slim navy suit']},
+  {id:'seed-selected-bluegrey-microcheck-suit',name:'Selected Blue-Grey Micro Check Suit',typeGroup:'Suits',type:'Suit',category:'work',fit:'slim',pattern:'check',color:'#394147',image:null,wornDates:[],queued:false,brand:'Selected Homme',detectionHints:['blue grey checked suit','micro check suit','subtle checked jacket and trousers']},
+  {id:'seed-paisley-royal-navy-suit',name:'Royal Navy Suit with Paisley Lining',typeGroup:'Suits',type:'Suit',category:'both',fit:'slim',pattern:'solid',color:'#133b72',image:null,wornDates:[],queued:false,detectionHints:['bright navy suit','blue suit with paisley lining','royal navy two-piece suit']},
+  {id:'seed-charcoal-check-blazer',name:'Charcoal Check Blazer',typeGroup:'Tops',type:'Blazer',category:'both',fit:'regular',pattern:'check',color:'#24231f',image:null,wornDates:[],queued:false,detectionHints:['charcoal checked blazer','black check sport coat','textured check jacket']},
+  {id:'seed-selected-grey-check-suit',name:'Selected Homme Grey Check Suit',typeGroup:'Suits',type:'Suit',category:'work',fit:'slim',pattern:'check',color:'#777168',image:null,wornDates:[],queued:false,brand:'Selected Homme',detectionHints:['grey checked suit','glen check two-piece suit','grey plaid suit']},
+  {id:'seed-grey-textured-blazer',name:'Grey Textured Blazer',typeGroup:'Tops',type:'Blazer',category:'both',fit:'regular',pattern:'other',color:'#6d6a65',image:null,wornDates:[],queued:false,detectionHints:['grey textured blazer','grey sport coat','small weave grey jacket']}
+];
+
 // ════════════════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════════════════
@@ -387,6 +402,7 @@ let S={
   mode:'work',workCtx:'Daily Office',casualCtx:'Weekend',
   weekPlan:{},weekPlanDate:'',weekPlanText:'',
   uploadPreview:null,activeWTab:'All',
+  activePhotoItemId:null,
   smartStep:0,smartAns:{}
 };
 let online=navigator.onLine;
@@ -438,7 +454,24 @@ function load(){
     S.weekPlanText=localStorage.getItem('vpt')||'';
     const qm=JSON.parse(localStorage.getItem('vq')||'[]');
     S.photoQueue=qm.map(q=>({...q,image:localStorage.getItem('vqi'+q.id)||''}));
+    seedStarterWardrobe();
   }catch(e){}
+}
+
+function seedStarterWardrobe(){
+  const seedVersion='2026-05-10-suits-01';
+  if(localStorage.getItem('vseed')===seedVersion)return;
+  const existing=new Set(S.wardrobe.map(i=>String(i.id)));
+  const additions=STARTER_WARDROBE.filter(i=>!existing.has(String(i.id))).map(i=>({...i,wornDates:[...(i.wornDates||[])]}));
+  if(additions.length){
+    S.wardrobe=[...S.wardrobe,...additions];
+    try{
+      localStorage.setItem('vw',JSON.stringify(S.wardrobe));
+      localStorage.setItem('vseed',seedVersion);
+    }catch(e){console.warn('Could not seed starter wardrobe',e);}
+  }else{
+    localStorage.setItem('vseed',seedVersion);
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -891,7 +924,8 @@ function renderWardrobe(){
     const d=daysSince(item.wornDates),freshC=fc(d);
     const thumb=item.image&&!item.queued?`<img src="${item.image}" alt="${item.name}" loading="lazy"/>`:`<div style="width:40px;height:40px;border-radius:7px;background:${item.color};border:1px solid var(--border);"></div>`;
     const qb=item.queued?'<div style="position:absolute;top:7px;left:7px;background:var(--gold);color:white;font-size:8px;padding:1px 5px;border-radius:4px;">QUEUED</div>':'';
-    return `<div class="wc" onclick="openDet(${item.id})">
+    const itemId=JSON.stringify(item.id);
+    return `<div class="wc" onclick='openDet(${itemId})'>
       <div class="wi" style="background:${item.image&&!item.queued?'#e8e2d8':`linear-gradient(135deg,${item.color}22,${item.color}10)`}">
         ${thumb}${qb}<div class="fd" style="background:${freshC};"></div>
       </div>
@@ -923,11 +957,36 @@ function openDet(id){
     <div class="dv"></div>
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:11px;color:var(--muted);">Times worn</span><span style="font-size:11px;color:var(--ink);font-weight:500;">${item.wornDates?.length||0}</span></div>
     <div style="display:flex;justify-content:space-between;margin-bottom:16px;"><span style="font-size:11px;color:var(--muted);">Last worn</span><span style="font-size:11px;color:var(--ink);font-weight:500;">${item.wornDates?.slice(-1)[0]||'Never'}</span></div>
+    <button onclick='attachItemPhoto(${JSON.stringify(id)})' style="width:100%;padding:11px;background:var(--ink);color:var(--cream);border:none;border-radius:8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;margin-bottom:8px;">${item.image?'Replace Photo':'Add Photo'}</button>
     <div style="display:flex;gap:8px;">
       <button onclick="closeModal('item')" style="flex:1;padding:11px;background:var(--linen);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;">Close</button>
-      <button onclick="rmItem(${id})" style="flex:1;padding:11px;background:#fdf0ee;color:var(--red);border:1px solid #f0d0c8;border-radius:8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;">Remove</button>
+      <button onclick='rmItem(${JSON.stringify(id)})' style="flex:1;padding:11px;background:#fdf0ee;color:var(--red);border:1px solid #f0d0c8;border-radius:8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;">Remove</button>
     </div>`;
   openModal('item');
+}
+function attachItemPhoto(id){
+  S.activePhotoItemId=id;
+  const input=document.getElementById('item-photo-input');
+  input.value='';
+  input.click();
+}
+function handleItemPhoto(input){
+  const file=input.files[0],id=S.activePhotoItemId;
+  if(!file||id==null)return;
+  if(!file.type||!file.type.startsWith('image/')){alert('Please choose an image file.');return;}
+  const item=S.wardrobe.find(i=>i.id===id);
+  if(!item)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    item.image=e.target.result;
+    item.queued=false;
+    S.photoQueue=S.photoQueue.filter(q=>q.id!==id);
+    try{localStorage.removeItem('vqi'+id);}catch(err){}
+    save();
+    renderWardrobe();
+    openDet(id);
+  };
+  reader.readAsDataURL(file);
 }
 function rmItem(id){if(!confirm('Remove this item?'))return;S.photoQueue=S.photoQueue.filter(q=>q.id!==id);try{localStorage.removeItem('vqi'+id);}catch(e){}S.wardrobe=S.wardrobe.filter(i=>i.id!==id);save();renderWardrobe();closeModal('item');updQueueBadge();}
 
