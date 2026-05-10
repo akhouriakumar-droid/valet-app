@@ -165,7 +165,7 @@ input:focus,select:focus{outline:none;}
   </div>
 </div>
 
-<div class="update-stamp">Last updated: 22 Apr 2026, 17:31 CEST</div>
+<div class="update-stamp" id="update-stamp">Last updated: Loading…</div>
 
 <div id="content">
 
@@ -178,10 +178,18 @@ input:focus,select:focus{outline:none;}
   </div>
   <div class="mt"><button class="mb active" id="mw" onclick="setMode('work')">Work</button><button class="mb" id="mc" onclick="setMode('casual')">Casual</button></div>
   <div class="sr" id="occ-row" style="margin-bottom:14px;"></div>
+  <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:11px;color:var(--muted);line-height:1.4;">
+    <input type="checkbox" id="include-missing" checked style="width:15px;height:15px;accent-color:var(--gold);"/>
+    Suggest shirts, shoes, and accessories I have not added yet
+  </label>
   <button class="gbtn" id="gen-btn" onclick="generateMorning()">✦  Generate Today's Outfits</button>
   <div id="mnote" class="status-note"></div>
   <div id="mspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div><div style="text-align:center;font-size:11px;color:var(--faint);margin-top:2px;">Curating your looks</div></div>
   <div id="mout" class="ao" style="display:none;"></div>
+  <button class="gbtn" id="suggest-btn" onclick="suggestComplementary()" style="margin-top:14px;">✦ Suggest Complementary Items</button>
+  <div id="snote" class="status-note"></div>
+  <div id="sspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div><div style="text-align:center;font-size:11px;color:var(--faint);margin-top:2px;">Analyzing your wardrobe</div></div>
+  <div id="sout" class="ao" style="display:none;"></div>
   <div id="mact" style="display:none;margin-top:16px;">
     <div style="display:flex;gap:8px;">
       <button onclick="logOutfit(this)" style="flex:1;padding:10px;background:var(--gold);color:white;border:none;border-radius:8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;cursor:pointer;">Log Worn</button>
@@ -228,7 +236,7 @@ input:focus,select:focus{outline:none;}
 <div id="screen-gaps" class="screen">
   <div style="font-size:16px;color:var(--ink);font-weight:400;letter-spacing:0.04em;margin-bottom:3px;">Wardrobe Gaps</div>
   <div style="font-size:10px;color:var(--faint);margin-bottom:14px;">What's missing to complete your wardrobe</div>
-  <div class="ib">AI cross-references your wardrobe against your occasions and 2026 trends to identify pieces that unlock the most new combinations.</div>
+  <div class="ib">Valet cross-references your wardrobe against your occasions and 2026 menswear direction to identify pieces that unlock the most new combinations.</div>
   <button class="gbtn" id="gap-btn" onclick="findGaps()">◇  Analyse My Gaps</button>
   <div id="gnote" class="status-note"></div>
   <div id="gspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div></div>
@@ -242,7 +250,7 @@ input:focus,select:focus{outline:none;}
     <button onclick="fetchTrends()" style="font-size:11px;color:var(--gold);background:none;border:none;cursor:pointer;">↻ Refresh</button>
   </div>
   <div style="font-size:10px;color:var(--faint);margin-bottom:14px;">Menswear intelligence · SS 2026</div>
-  <button class="gbtn" id="trend-btn" onclick="fetchTrends()">◈  Search Latest Trends</button>
+  <button class="gbtn" id="trend-btn" onclick="fetchTrends()">◈  Refresh Trend Guide</button>
   <div id="tnote" class="status-note"></div>
   <div id="tspin" style="display:none;"><div class="sp"><span></span><span></span><span></span></div></div>
   <div id="tout" class="ao" style="display:none;"></div>
@@ -409,9 +417,10 @@ let online=navigator.onLine;
 let cityAcTimer=null; // debounce timer for autocomplete
 const CFG={
   ai:{
-    enabled:false,
-    endpoint:'',
-    model:''
+    enabled:true,
+    endpoint:'https://api.openai.com/v1/chat/completions',
+    model:'gpt-4o',
+    key:'' // Set your OpenAI API key here
   },
   networkTimeoutMs:9000
 };
@@ -546,15 +555,17 @@ async function fetchJSON(url,{timeout=CFG.networkTimeoutMs,headers={},...opts}={
 
 async function fetchAI(msgs,sys='',search=false){
   if(!CFG.ai.enabled||!CFG.ai.endpoint)throw new Error('AI_UNAVAILABLE');
-  const body={messages:msgs,system:sys,search};
+  const headers={'Content-Type':'application/json'};
+  if(CFG.ai.key)headers['Authorization']='Bearer '+CFG.ai.key;
+  const body={model:CFG.ai.model,messages:[{role:'system',content:sys},...msgs.map(m=>({role:'user',content:m.content}))]};
   const data=await fetchJSON(CFG.ai.endpoint,{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers,
     body:JSON.stringify(body),
     timeout:15000
   });
-  if(typeof data?.text!=='string'||!data.text.trim())throw new Error('AI_BAD_RESPONSE');
-  return data.text;
+  if(!data?.choices?.[0]?.message?.content)throw new Error('AI_BAD_RESPONSE');
+  return data.choices[0].message.content;
 }
 
 async function safeJSONParse(raw){
@@ -821,7 +832,7 @@ async function generateMorning(){
   const hist=S.outfitLog.length?`Recent outfits logged: ${S.outfitLog.slice(0,5).map(e=>e.date+' '+e.context).join(', ')}`:'No history yet.';
   try{
     const r=await fetchAI([{role:'user',content:`Today: ${todayFull()}. ${wx}\n${ctx}\n${hist}\n\nWardrobe:\n${items}\n\nGive 3 complete outfit recommendations. Avoid recently worn items. Mix suit separates intelligently (e.g. coat from one suit with trousers of another if colours/patterns work). Include shoes, accessories, watch/jewellery from wardrobe where available.\n\nFormat:\n**Outfit 1 — [Name]**\nItems: [names]\nNote: [2 sentences — why it works & how to wear]\n\n**Outfit 2 — [Name]**\n...\n\n**Outfit 3 — [Name]**\n...\n\n**Today's Styling Principle**\n[One golden styling rule]`}],
-      'You are an elite personal stylist specialising in refined menswear. Be specific, decisive, and fashion-forward.');
+      'You are an elite personal stylist specialising in refined menswear. Draw from Japanese menswear principles of minimalism, quality fabrics, and timeless design (inspired by books like "Style to Kill" by Ginza Tanaka and "The Japanese Art of Dressing" by Shinya Hasegawa). Apply the 60-30-10 color rule for balanced proportions. Incorporate old money aesthetics: preppy, classic pieces like chinos, oxfords, and unstructured blazers. Reference luxury brand philosophies from houses like Loro Piana (cashmere expertise) and Brunello Cucinelli (sustainable Italian craftsmanship). Stay current with 2026 trends: sustainable fabrics, gender-fluid silhouettes, oversized proportions, and tech-integrated accessories. Be specific, decisive, and fashion-forward.');
     document.getElementById('mout').innerHTML=rAI(r);
     document.getElementById('mout').style.display='block';
     document.getElementById('mact').style.display='block';
@@ -841,6 +852,36 @@ function logOutfit(btn){
   save();renderPlanLog();
   const orig=btn.textContent;btn.textContent='✓ Logged';btn.disabled=true;
   setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2000);
+}
+
+async function suggestComplementary(){
+  if(S.wardrobe.length<1){showNote('snote','Add at least 1 wardrobe item first.','warn');return;}
+  if(!online){
+    showNote('snote','Complementary suggestions require an online connection.','warn');
+    return;
+  }
+  if(!CFG.ai.enabled||!CFG.ai.endpoint){
+    showNote('snote',TXT.aiUnavailable,'warn');
+    return;
+  }
+  showNote('snote');
+  document.getElementById('sout').style.display='none';
+  document.getElementById('sspin').style.display='block';
+  setBtnBusy('suggest-btn',true,'Analyzing…');
+  const items=S.wardrobe.map(i=>`${i.name}|${i.typeGroup}/${i.type}|${i.fit}fit|${i.pattern}|${i.color}`).join('\n');
+  try{
+    const r=await fetchAI([{role:'user',content:`Your current wardrobe:\n${items}\n\nSuggest 5 complementary clothing items (shirts, shoes, accessories, etc.) that would match and enhance your existing wardrobe. Focus on items you likely don't have yet. For each suggestion, include:\n- Item name\n- Why it complements your wardrobe\n- Suggested style details (fit, pattern, color)\n\nFormat as a numbered list with bold item names.`}],
+      'You are a fashion stylist. Draw from Japanese menswear principles of minimalism and quality, the 60-30-10 color rule, old money aesthetics, luxury brand concepts, and 2026 trends like sustainable materials and versatile silhouettes. Suggest practical, stylish additions that fill gaps in a menswear wardrobe.');
+    document.getElementById('sout').innerHTML=rAI(r);
+    document.getElementById('sout').style.display='block';
+    showNote('snote','Complementary item suggestions are ready.','success');
+  }catch(e){
+    document.getElementById('sout').innerHTML='<p class="ap" style="color:var(--red);">Suggestions are unavailable right now.</p>';
+    document.getElementById('sout').style.display='block';
+    showNote('snote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not generate suggestions right now. Please retry shortly.','error');
+  }
+  document.getElementById('sspin').style.display='none';
+  setBtnBusy('suggest-btn',false);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1304,7 +1345,7 @@ async function findGaps(){
   try{
     const wardrobe=S.wardrobe.map(i=>`- ${i.name}: ${i.typeGroup}/${i.type}, ${i.color}, ${i.pattern}, ${i.fit} fit, ${i.category}, worn ${i.wornDates?.length||0} times`).join('\n');
     const r=await fetchAI([{role:'user',content:`Today is ${todayLong()}.\nWardrobe:\n${wardrobe}\n\nOccasions: ${[...WC,...CC].join(', ')}.\nIdentify the 5 most important missing pieces for a refined menswear wardrobe. Account for full suits, suit separates, shoes, outerwear, accessories, colour balance, and occasion coverage. Be specific (e.g. "a mid-grey herringbone blazer"), avoid recommending duplicates, and explain exactly which existing items each gap would pair with.`}],
-      'Personal stylist. Specific, actionable wardrobe gap analysis. Prioritise high-utility purchases, not generic trend filler.',true);
+      'Personal stylist specialising in refined menswear. Draw from Japanese principles of quality and minimalism, 60-30-10 color harmony, old money classics, luxury brand craftsmanship, and 2026 trends. Specific, actionable wardrobe gap analysis. Prioritise high-utility purchases.',true);
     document.getElementById('gout').innerHTML=rAI(r);document.getElementById('gout').style.display='block';
     showNote('gnote','Gap analysis is ready.','success');
   }catch(e){document.getElementById('gout').innerHTML='<p class="ap" style="color:var(--red);">Gap analysis is unavailable right now.</p>';document.getElementById('gout').style.display='block';showNote('gnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not analyse your wardrobe gaps right now.','error');}
@@ -1322,7 +1363,7 @@ async function fetchTrends(){
   setBtnBusy('trend-btn',true,'Searching…');document.getElementById('tspin').style.display='block';document.getElementById('tout').style.display='none';
   try{
     const r=await fetchAI([{role:'user',content:`Today is ${todayLong()}. Search the web for current men's fashion trends for this season. Cover silhouettes, colours, suiting, separates styling, footwear, and accessories. Focus on refined menswear, quiet luxury, and old-money-adjacent dressing without making it costume-like. Give 5 actionable trends, each with: trend name, what to buy/use from an existing wardrobe, what to avoid, and how long-lived it is likely to be.`}],
-      'Fashion editor covering refined menswear. Use current web search when available; avoid stale trend roundups and clearly favour wearable, durable guidance.',true);
+      'Fashion editor covering refined menswear. Draw from Japanese styling minimalism, 60-30-10 rule, old money aesthetics, luxury brand philosophies, and emerging 2026 trends like sustainable fabrics and versatile silhouettes. Use current web search when available; avoid stale trend roundups and clearly favour wearable, durable guidance.',true);
     document.getElementById('tout').innerHTML=rAI(r);document.getElementById('tout').style.display='block';
     showNote('tnote','Trend report refreshed.','success');
   }catch(e){document.getElementById('tout').innerHTML='<p class="ap" style="color:var(--red);">Trend search is unavailable right now.</p>';document.getElementById('tout').style.display='block';showNote('tnote',e.message==='AI_UNAVAILABLE'?TXT.aiUnavailable:'Could not refresh trends right now.','error');}
@@ -1353,6 +1394,7 @@ function init(){
   load();updOnline();
   setupUploadDropzone();
   document.getElementById('date-label').textContent=todayFull();
+  document.getElementById('update-stamp').textContent='Last updated: ' + new Date().toLocaleString('en-GB', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', timeZoneName:'short'});
   renderOcc();
   document.getElementById('city-label').textContent=S.city||'Set City';
   updQueueBadge();updTypes();
